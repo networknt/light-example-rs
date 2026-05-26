@@ -16,6 +16,7 @@ use tracing_subscriber::EnvFilter;
 
 const CONFIG_DIR_ENV: &str = "CUSTOMER_PROFILE_CONFIG_DIR";
 const EXTERNAL_CONFIG_DIR_ENV: &str = "CUSTOMER_PROFILE_EXTERNAL_CONFIG_DIR";
+const LOG_ANSI_ENV: &str = "CUSTOMER_PROFILE_LOG_ANSI";
 const DEFAULT_CONFIG_DIR: &str = "apps/demo-customer-profile-api/config";
 const DEFAULT_EXTERNAL_CONFIG_DIR: &str = "apps/demo-customer-profile-api/config-cache";
 
@@ -298,7 +299,16 @@ fn default_channel() -> String {
 
 fn init_tracing() {
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
-    tracing_subscriber::fmt().with_env_filter(filter).init();
+    let use_ansi = std::env::var(LOG_ANSI_ENV)
+        .ok()
+        .map(|value| value.trim().to_lowercase())
+        .map(|value| value == "true" || value == "1" || value == "yes" || value == "on");
+
+    let subscriber = tracing_subscriber::fmt().with_env_filter(filter);
+    match use_ansi {
+        Some(use_ansi) => subscriber.with_ansi(use_ansi).init(),
+        None => subscriber.init(),
+    }
 }
 
 #[cfg(test)]
