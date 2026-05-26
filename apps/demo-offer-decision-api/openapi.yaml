@@ -1,0 +1,254 @@
+openapi: 3.0.3
+info:
+  title: Demo Offer Decision API
+  version: 1.0.0
+  description: Offer search and offer decision API for the Light Fabric workflow demo.
+servers:
+  - url: http://127.0.0.1:8086
+    description: Local development
+  - url: http://demo-offer-decision-api:8086
+    description: Demo service discovery name
+tags:
+  - name: Health
+  - name: Offers
+  - name: Offer Decisions
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      operationId: getOfferDecisionHealth
+      summary: Get service health
+      responses:
+        "200":
+          description: Service health status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              examples:
+                healthy:
+                  value:
+                    status: UP
+                    service: demo-offer-decision-api
+  /offers:
+    get:
+      tags:
+        - Offers
+      operationId: searchOffers
+      summary: Search active offers
+      parameters:
+        - name: segment
+          in: query
+          required: false
+          description: Customer segment filter.
+          schema:
+            type: string
+          example: premium
+        - name: state
+          in: query
+          required: false
+          description: Region or province filter.
+          schema:
+            type: string
+          example: ON
+        - name: category
+          in: query
+          required: false
+          description: Offer category filter.
+          schema:
+            type: string
+          example: travel
+      responses:
+        "200":
+          description: Active offers matching the supplied filters, sorted by priority.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Offer"
+              examples:
+                travelOffers:
+                  value:
+                    - offerId: OFFER-TRAVEL-01
+                      title: Premium travel credit
+                      segment: premium
+                      state: ON
+                      category: travel
+                      priority: 1
+                      active: true
+  /offer-decisions:
+    post:
+      tags:
+        - Offer Decisions
+      operationId: recordOfferDecision
+      summary: Record an offer decision
+      parameters:
+        - name: idempotency-key
+          in: header
+          required: false
+          description: Optional idempotency key. If omitted, the service derives one from customer, offer, and channel.
+          schema:
+            type: string
+          example: wf-demo-1001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OfferDecisionRequest"
+            examples:
+              workflowDecision:
+                value:
+                  customerId: CUST-1001
+                  offerId: OFFER-TRAVEL-01
+                  channel: portal
+                  source: workflow
+                  reason: demo
+      responses:
+        "200":
+          description: Recorded offer decision.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OfferDecisionResponse"
+              examples:
+                approved:
+                  value:
+                    decisionId: DEC-1001
+                    customerId: CUST-1001
+                    offerId: OFFER-TRAVEL-01
+                    decision: approved
+                    createdAt: "2026-05-25T14:12:00Z"
+                    auditRef: AUD-WORKFLOW
+        "400":
+          description: The requested offer is inactive or does not exist.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                inactiveOffer:
+                  value:
+                    code: INVALID_DECISION_REQUEST
+                    message: offer OFFER-EXPIRED-01 is not active or does not exist
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - service
+      properties:
+        status:
+          type: string
+          example: UP
+        service:
+          type: string
+          example: demo-offer-decision-api
+    Offer:
+      type: object
+      required:
+        - offerId
+        - title
+        - segment
+        - state
+        - category
+        - priority
+        - active
+      properties:
+        offerId:
+          type: string
+          example: OFFER-TRAVEL-01
+        title:
+          type: string
+          example: Premium travel credit
+        segment:
+          type: string
+          example: premium
+        state:
+          type: string
+          example: ON
+        category:
+          type: string
+          example: travel
+        priority:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 255
+          example: 1
+        active:
+          type: boolean
+          example: true
+    OfferDecisionRequest:
+      type: object
+      required:
+        - customerId
+        - offerId
+        - channel
+        - source
+        - reason
+      properties:
+        customerId:
+          type: string
+          example: CUST-1001
+        offerId:
+          type: string
+          example: OFFER-TRAVEL-01
+        channel:
+          type: string
+          example: portal
+        source:
+          type: string
+          example: workflow
+        reason:
+          type: string
+          example: demo
+        idempotencyKey:
+          type: string
+          nullable: true
+          description: Optional idempotency key in the JSON body.
+          example: wf-demo-1001
+    OfferDecisionResponse:
+      type: object
+      required:
+        - decisionId
+        - customerId
+        - offerId
+        - decision
+        - createdAt
+        - auditRef
+      properties:
+        decisionId:
+          type: string
+          example: DEC-1001
+        customerId:
+          type: string
+          example: CUST-1001
+        offerId:
+          type: string
+          example: OFFER-TRAVEL-01
+        decision:
+          type: string
+          example: approved
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-05-25T14:12:00Z"
+        auditRef:
+          type: string
+          example: AUD-WORKFLOW
+    ErrorResponse:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: INVALID_DECISION_REQUEST
+        message:
+          type: string
+          example: offer OFFER-EXPIRED-01 is not active or does not exist

@@ -41,6 +41,15 @@ curl -s -X POST http://127.0.0.1:8086/offer-decisions \
   -d '{"customerId":"CUST-1001","offerId":"OFFER-TRAVEL-01","channel":"portal","source":"workflow","reason":"demo"}'
 ```
 
+## OpenAPI Specifications
+
+Upload these files in the API version form to create endpoint records:
+
+```text
+apps/demo-customer-profile-api/openapi.yaml
+apps/demo-offer-decision-api/openapi.yaml
+```
+
 ## Config-Server And Controller
 
 The runtime config templates are in each app's `config/` directory:

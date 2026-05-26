@@ -1,0 +1,195 @@
+openapi: 3.0.3
+info:
+  title: Demo Customer Profile API
+  version: 1.0.0
+  description: Customer profile and preference lookup API for the Light Fabric workflow demo.
+servers:
+  - url: http://127.0.0.1:8085
+    description: Local development
+  - url: http://demo-customer-profile-api:8085
+    description: Demo service discovery name
+tags:
+  - name: Health
+  - name: Customers
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      operationId: getCustomerProfileHealth
+      summary: Get service health
+      responses:
+        "200":
+          description: Service health status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              examples:
+                healthy:
+                  value:
+                    status: UP
+                    service: demo-customer-profile-api
+  /customers/{customerId}:
+    get:
+      tags:
+        - Customers
+      operationId: getCustomerProfile
+      summary: Get a customer profile
+      parameters:
+        - $ref: "#/components/parameters/CustomerId"
+      responses:
+        "200":
+          description: Customer profile.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerProfile"
+              examples:
+                premiumCustomer:
+                  value:
+                    customerId: CUST-1001
+                    displayName: Avery Chen
+                    segment: premium
+                    state: ON
+                    accountStatus: active
+        "404":
+          description: Customer was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                customerNotFound:
+                  value:
+                    code: CUSTOMER_NOT_FOUND
+                    message: customer CUST-9999 was not found
+  /customers/{customerId}/preferences:
+    get:
+      tags:
+        - Customers
+      operationId: getCustomerPreferences
+      summary: Get customer preferences
+      parameters:
+        - $ref: "#/components/parameters/CustomerId"
+        - name: channel
+          in: query
+          required: false
+          description: Requested channel context. Defaults to portal when omitted.
+          schema:
+            type: string
+            default: portal
+          example: portal
+      responses:
+        "200":
+          description: Customer preferences for the requested channel.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreferencesResponse"
+              examples:
+                portalPreferences:
+                  value:
+                    customerId: CUST-1001
+                    channel: portal
+                    consent: true
+                    preferredCategories:
+                      - travel
+                    preferredContactChannel: portal
+        "404":
+          description: Customer was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                customerNotFound:
+                  value:
+                    code: CUSTOMER_NOT_FOUND
+                    message: customer CUST-9999 was not found
+components:
+  parameters:
+    CustomerId:
+      name: customerId
+      in: path
+      required: true
+      description: Customer identifier.
+      schema:
+        type: string
+      example: CUST-1001
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - service
+      properties:
+        status:
+          type: string
+          example: UP
+        service:
+          type: string
+          example: demo-customer-profile-api
+    CustomerProfile:
+      type: object
+      required:
+        - customerId
+        - displayName
+        - segment
+        - state
+        - accountStatus
+      properties:
+        customerId:
+          type: string
+          example: CUST-1001
+        displayName:
+          type: string
+          example: Avery Chen
+        segment:
+          type: string
+          example: premium
+        state:
+          type: string
+          example: ON
+        accountStatus:
+          type: string
+          example: active
+    PreferencesResponse:
+      type: object
+      required:
+        - customerId
+        - channel
+        - consent
+        - preferredCategories
+        - preferredContactChannel
+      properties:
+        customerId:
+          type: string
+          example: CUST-1001
+        channel:
+          type: string
+          example: portal
+        consent:
+          type: boolean
+          example: true
+        preferredCategories:
+          type: array
+          items:
+            type: string
+          example:
+            - travel
+        preferredContactChannel:
+          type: string
+          example: portal
+    ErrorResponse:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: CUSTOMER_NOT_FOUND
+        message:
+          type: string
+          example: customer CUST-9999 was not found
