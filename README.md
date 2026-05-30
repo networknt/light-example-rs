@@ -9,8 +9,8 @@ workflow orchestration demo:
 
 | App | Service id | Default port | Endpoints |
 | --- | --- | ---: | --- |
-| `demo-customer-profile-api` | `com.networknt.demo.customer-profile-1.0.0` | `8085` | `GET /customers/{customerId}`, `GET /customers/{customerId}/preferences`, `GET /health` |
-| `demo-offer-decision-api` | `com.networknt.demo.offer-decision-1.0.0` | `8086` | `GET /offers`, `POST /offer-decisions`, `GET /health` |
+| `demo-customer-profile-api` | `com.networknt.demo.customer-profile-1.0.0` | `8085` | `GET /customers/{customerId}`, `GET /customers/{customerId}/preferences`, `GET /customers/{customerId}/policies`, `GET /customers/{customerId}/vehicles/{vehicleId}`, `GET /customers/{customerId}/prior-claims`, `GET /health` |
+| `demo-offer-decision-api` | `com.networknt.demo.offer-decision-1.0.0` | `8086` | `GET /offers`, `POST /offer-decisions`, `POST /claim-triage`, `POST /settlement-recommendations`, `GET /health` |
 
 Both apps use `LightRuntimeBuilder` with `AxumTransport`, so they can load
 configuration from config-server and register with controller through
@@ -34,12 +34,29 @@ Smoke checks:
 ```sh
 curl -s http://127.0.0.1:8085/customers/CUST-1001
 curl -s "http://127.0.0.1:8085/customers/CUST-1001/preferences?channel=portal"
+curl -s http://127.0.0.1:8085/customers/CUST-1001/policies
+curl -s http://127.0.0.1:8085/customers/CUST-1001/vehicles/VEH-1001
+curl -s http://127.0.0.1:8085/customers/CUST-1001/prior-claims
 curl -s "http://127.0.0.1:8086/offers?segment=premium&state=ON&category=travel"
 curl -s -X POST http://127.0.0.1:8086/offer-decisions \
   -H 'content-type: application/json' \
   -H 'idempotency-key: wf-demo-1001' \
   -d '{"customerId":"CUST-1001","offerId":"OFFER-TRAVEL-01","channel":"portal","source":"workflow","reason":"demo"}'
+curl -s -X POST http://127.0.0.1:8086/claim-triage \
+  -H 'content-type: application/json' \
+  -d '{"claim":{"claimId":"CLM-1001","customerId":"CUST-1001","vehicleId":"VEH-1001","injuryReported":false,"vehicleDrivable":false},"customer":{"customerId":"CUST-1001","segment":"premium","state":"ON"},"policies":{"policies":[{"policyId":"POL-AUTO-1001","status":"active"}]},"vehicle":{"vehicleId":"VEH-1001","covered":true},"priorClaims":{"priorClaimCount":1,"recentClaimCount":0}}'
+curl -s -X POST http://127.0.0.1:8086/settlement-recommendations \
+  -H 'content-type: application/json' \
+  -H 'idempotency-key: claim-demo-1001' \
+  -d '{"claim":{"claimId":"CLM-1001","customerId":"CUST-1001"},"coverageReview":{"deductible":500},"triage":{"recommendedPath":"repair","estimatedLoss":3200},"approval":{"decision":"APPROVED"}}'
 ```
+
+Insurance claim demo records are deterministic:
+
+- `CUST-1001`: active Ontario auto policy, covered `VEH-1001`, low/medium risk repair path.
+- `CUST-2002`: expired policy and uncovered `VEH-2002`, review/SIU path.
+- `CUST-3003`: active policy and covered vehicle, but consent is disabled for customer-info branches.
+- unknown customers return `404` for profile and insurance context endpoints.
 
 ## OpenAPI Specifications
 

@@ -12,6 +12,7 @@ tags:
   - name: Health
   - name: Offers
   - name: Offer Decisions
+  - name: Claim Decisions
 paths:
   /health:
     get:
@@ -133,6 +134,122 @@ paths:
                   value:
                     code: INVALID_DECISION_REQUEST
                     message: offer OFFER-EXPIRED-01 is not active or does not exist
+  /claim-triage:
+    post:
+      tags:
+        - Claim Decisions
+      operationId: triageClaim
+      summary: Evaluate insurance claim triage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClaimTriageRequest"
+            examples:
+              vehicleNotDrivable:
+                value:
+                  claim:
+                    claimId: CLM-1001
+                    customerId: CUST-1001
+                    vehicleId: VEH-1001
+                    injuryReported: false
+                    vehicleDrivable: false
+                  customer:
+                    customerId: CUST-1001
+                    segment: premium
+                    state: ON
+                  policies:
+                    policies:
+                      - policyId: POL-AUTO-1001
+                        status: active
+                  vehicle:
+                    vehicleId: VEH-1001
+                    covered: true
+                  priorClaims:
+                    priorClaimCount: 1
+                    recentClaimCount: 0
+      responses:
+        "200":
+          description: Claim triage result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClaimTriageResponse"
+              examples:
+                mediumRisk:
+                  value:
+                    severity: medium
+                    riskLevel: medium
+                    recommendedPath: repair
+                    requiresAdjusterReview: true
+                    requiresSiuReview: false
+                    estimatedLoss: 3200
+                    reasonCodes:
+                      - VEHICLE_NOT_DRIVABLE
+        "400":
+          description: Claim triage request was invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /settlement-recommendations:
+    post:
+      tags:
+        - Claim Decisions
+      operationId: recommendSettlement
+      summary: Prepare an insurance claim settlement recommendation
+      parameters:
+        - name: idempotency-key
+          in: header
+          required: false
+          description: Optional idempotency key for retry-safe recommendation creation.
+          schema:
+            type: string
+          example: claim-demo-1001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SettlementRecommendationRequest"
+            examples:
+              approvedRepair:
+                value:
+                  claim:
+                    claimId: CLM-1001
+                    customerId: CUST-1001
+                  coverageReview:
+                    deductible: 500
+                  triage:
+                    recommendedPath: repair
+                    estimatedLoss: 3200
+                  approval:
+                    decision: APPROVED
+      responses:
+        "200":
+          description: Settlement recommendation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SettlementRecommendationResponse"
+              examples:
+                repair:
+                  value:
+                    decisionId: DEC-1001
+                    recommendedPath: repair
+                    settlementAmount: 2700
+                    deductible: 500
+                    customerSummary: Repair is recommended after the deductible.
+                    nextActions:
+                      - schedule_repair
+                      - send_photos
+        "400":
+          description: Settlement request was invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthResponse:
@@ -240,6 +357,127 @@ components:
         auditRef:
           type: string
           example: AUD-WORKFLOW
+    FreeFormObject:
+      type: object
+      additionalProperties: true
+    ClaimTriageRequest:
+      type: object
+      required:
+        - claim
+        - customer
+        - policies
+        - vehicle
+        - priorClaims
+      properties:
+        claim:
+          $ref: "#/components/schemas/FreeFormObject"
+        customer:
+          $ref: "#/components/schemas/FreeFormObject"
+        policies:
+          $ref: "#/components/schemas/FreeFormObject"
+        vehicle:
+          $ref: "#/components/schemas/FreeFormObject"
+        priorClaims:
+          $ref: "#/components/schemas/FreeFormObject"
+    ClaimTriageResponse:
+      type: object
+      required:
+        - severity
+        - riskLevel
+        - recommendedPath
+        - requiresAdjusterReview
+        - requiresSiuReview
+        - estimatedLoss
+        - reasonCodes
+      properties:
+        severity:
+          type: string
+          enum:
+            - low
+            - medium
+            - high
+          example: medium
+        riskLevel:
+          type: string
+          enum:
+            - low
+            - medium
+            - high
+          example: medium
+        recommendedPath:
+          type: string
+          example: repair
+        requiresAdjusterReview:
+          type: boolean
+          example: true
+        requiresSiuReview:
+          type: boolean
+          example: false
+        estimatedLoss:
+          type: integer
+          format: int32
+          example: 3200
+        reasonCodes:
+          type: array
+          items:
+            type: string
+          example:
+            - VEHICLE_NOT_DRIVABLE
+    SettlementRecommendationRequest:
+      type: object
+      required:
+        - claim
+        - coverageReview
+        - triage
+        - approval
+      properties:
+        claim:
+          $ref: "#/components/schemas/FreeFormObject"
+        coverageReview:
+          $ref: "#/components/schemas/FreeFormObject"
+        triage:
+          $ref: "#/components/schemas/FreeFormObject"
+        approval:
+          $ref: "#/components/schemas/FreeFormObject"
+        idempotencyKey:
+          type: string
+          nullable: true
+          description: Optional idempotency key in the JSON body.
+          example: claim-demo-1001
+    SettlementRecommendationResponse:
+      type: object
+      required:
+        - decisionId
+        - recommendedPath
+        - settlementAmount
+        - deductible
+        - customerSummary
+        - nextActions
+      properties:
+        decisionId:
+          type: string
+          example: DEC-1001
+        recommendedPath:
+          type: string
+          example: repair
+        settlementAmount:
+          type: integer
+          format: int32
+          example: 2700
+        deductible:
+          type: integer
+          format: int32
+          example: 500
+        customerSummary:
+          type: string
+          example: Repair is recommended after the deductible.
+        nextActions:
+          type: array
+          items:
+            type: string
+          example:
+            - schedule_repair
+            - send_photos
     ErrorResponse:
       type: object
       required:

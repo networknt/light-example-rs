@@ -107,6 +107,105 @@ paths:
                   value:
                     code: CUSTOMER_NOT_FOUND
                     message: customer CUST-9999 was not found
+  /customers/{customerId}/policies:
+    get:
+      tags:
+        - Customers
+      operationId: getCustomerPolicies
+      summary: Get auto insurance policies for a customer
+      parameters:
+        - $ref: "#/components/parameters/CustomerId"
+      responses:
+        "200":
+          description: Customer policy context.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PolicyResponse"
+              examples:
+                activePolicy:
+                  value:
+                    customerId: CUST-1001
+                    policies:
+                      - policyId: POL-AUTO-1001
+                        status: active
+                        effectiveDate: "2025-01-01"
+                        expiryDate: "2027-01-01"
+                        province: ON
+                        coverages:
+                          - coverageType: collision
+                            deductible: 500
+                            limit: 50000
+        "404":
+          description: Customer was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /customers/{customerId}/vehicles/{vehicleId}:
+    get:
+      tags:
+        - Customers
+      operationId: getCoveredVehicle
+      summary: Get a covered vehicle for a customer
+      parameters:
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/VehicleId"
+      responses:
+        "200":
+          description: Vehicle coverage context.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vehicle"
+              examples:
+                coveredVehicle:
+                  value:
+                    customerId: CUST-1001
+                    vehicleId: VEH-1001
+                    vin: DEMO-VIN-1001
+                    year: 2022
+                    make: Toyota
+                    model: RAV4
+                    covered: true
+        "404":
+          description: Customer or vehicle was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /customers/{customerId}/prior-claims:
+    get:
+      tags:
+        - Customers
+      operationId: listPriorClaims
+      summary: List prior insurance claims for a customer
+      parameters:
+        - $ref: "#/components/parameters/CustomerId"
+      responses:
+        "200":
+          description: Prior claim history for risk review.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PriorClaimsResponse"
+              examples:
+                priorClaims:
+                  value:
+                    customerId: CUST-1001
+                    priorClaimCount: 1
+                    recentClaimCount: 0
+                    claims:
+                      - claimId: CLM-OLD-1001
+                        incidentDate: "2024-08-12"
+                        status: closed
+                        paidAmount: 1800
+        "404":
+          description: Customer was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   parameters:
     CustomerId:
@@ -117,6 +216,14 @@ components:
       schema:
         type: string
       example: CUST-1001
+    VehicleId:
+      name: vehicleId
+      in: path
+      required: true
+      description: Vehicle identifier.
+      schema:
+        type: string
+      example: VEH-1001
   schemas:
     HealthResponse:
       type: object
@@ -181,6 +288,146 @@ components:
         preferredContactChannel:
           type: string
           example: portal
+    PolicyResponse:
+      type: object
+      required:
+        - customerId
+        - policies
+      properties:
+        customerId:
+          type: string
+          example: CUST-1001
+        policies:
+          type: array
+          items:
+            $ref: "#/components/schemas/Policy"
+    Policy:
+      type: object
+      required:
+        - policyId
+        - status
+        - effectiveDate
+        - expiryDate
+        - province
+        - coverages
+      properties:
+        policyId:
+          type: string
+          example: POL-AUTO-1001
+        status:
+          type: string
+          example: active
+        effectiveDate:
+          type: string
+          format: date
+          example: "2025-01-01"
+        expiryDate:
+          type: string
+          format: date
+          example: "2027-01-01"
+        province:
+          type: string
+          example: ON
+        coverages:
+          type: array
+          items:
+            $ref: "#/components/schemas/Coverage"
+    Coverage:
+      type: object
+      required:
+        - coverageType
+        - deductible
+        - limit
+      properties:
+        coverageType:
+          type: string
+          example: collision
+        deductible:
+          type: integer
+          format: int32
+          example: 500
+        limit:
+          type: integer
+          format: int32
+          example: 50000
+    Vehicle:
+      type: object
+      required:
+        - customerId
+        - vehicleId
+        - vin
+        - year
+        - make
+        - model
+        - covered
+      properties:
+        customerId:
+          type: string
+          example: CUST-1001
+        vehicleId:
+          type: string
+          example: VEH-1001
+        vin:
+          type: string
+          example: DEMO-VIN-1001
+        year:
+          type: integer
+          format: int32
+          example: 2022
+        make:
+          type: string
+          example: Toyota
+        model:
+          type: string
+          example: RAV4
+        covered:
+          type: boolean
+          example: true
+    PriorClaimsResponse:
+      type: object
+      required:
+        - customerId
+        - priorClaimCount
+        - recentClaimCount
+        - claims
+      properties:
+        customerId:
+          type: string
+          example: CUST-1001
+        priorClaimCount:
+          type: integer
+          format: int32
+          example: 1
+        recentClaimCount:
+          type: integer
+          format: int32
+          example: 0
+        claims:
+          type: array
+          items:
+            $ref: "#/components/schemas/PriorClaim"
+    PriorClaim:
+      type: object
+      required:
+        - claimId
+        - incidentDate
+        - status
+        - paidAmount
+      properties:
+        claimId:
+          type: string
+          example: CLM-OLD-1001
+        incidentDate:
+          type: string
+          format: date
+          example: "2024-08-12"
+        status:
+          type: string
+          example: closed
+        paidAmount:
+          type: integer
+          format: int32
+          example: 1800
     ErrorResponse:
       type: object
       required:

@@ -10,6 +10,7 @@ use axum::{
 use light_axum::{AxumApp, AxumTransport, ServerContext};
 use light_runtime::{LightRuntimeBuilder, RuntimeError};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::{
     collections::HashMap,
     sync::{
@@ -42,7 +43,9 @@ impl AxumApp for OfferDecisionApp {
 struct AppState {
     offers: Arc<Vec<Offer>>,
     decisions: Arc<Mutex<HashMap<String, OfferDecisionResponse>>>,
+    settlement_recommendations: Arc<Mutex<HashMap<String, SettlementRecommendationResponse>>>,
     next_decision_number: Arc<AtomicUsize>,
+    next_settlement_number: Arc<AtomicUsize>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
@@ -86,6 +89,50 @@ struct OfferDecisionResponse {
     decision: String,
     created_at: String,
     audit_ref: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ClaimTriageRequest {
+    claim: Value,
+    customer: Value,
+    policies: Value,
+    vehicle: Value,
+    prior_claims: Value,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct ClaimTriageResponse {
+    severity: String,
+    risk_level: String,
+    recommended_path: String,
+    requires_adjuster_review: bool,
+    requires_siu_review: bool,
+    estimated_loss: u32,
+    reason_codes: Vec<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SettlementRecommendationRequest {
+    claim: Value,
+    coverage_review: Value,
+    triage: Value,
+    approval: Value,
+    #[serde(default)]
+    idempotency_key: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct SettlementRecommendationResponse {
+    decision_id: String,
+    recommended_path: String,
+    settlement_amount: u32,
+    deductible: u32,
+    customer_summary: String,
+    next_actions: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -170,6 +217,8 @@ fn build_router() -> Router {
         .route("/health", get(health))
         .route("/offers", get(search_offers))
         .route("/offer-decisions", post(record_offer_decision))
+        .route("/claim-triage", post(triage_claim))
+        .route("/settlement-recommendations", post(recommend_settlement))
         .with_state(AppState::seeded())
 }
 
@@ -213,6 +262,49 @@ async fn record_offer_decision(
     Ok(Json(state.record_decision(request, idempotency_key).await))
 }
 
+async fn triage_claim(
+    Json(request): Json<ClaimTriageRequest>,
+) -> std::result::Result<Json<ClaimTriageResponse>, ApiError> {
+    if claim_string(&request.claim, "customerId").is_none()
+        && claim_string(&request.customer, "customerId").is_none()
+    {
+        return Err(ApiError::bad_request(
+            "claim.customerId or customer.customerId is required",
+        ));
+    }
+
+    Ok(Json(ClaimTriageResponse::from_request(&request)))
+}
+
+async fn recommend_settlement(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(request): Json<SettlementRecommendationRequest>,
+) -> std::result::Result<Json<SettlementRecommendationResponse>, ApiError> {
+    if claim_string(&request.claim, "customerId").is_none() {
+        return Err(ApiError::bad_request("claim.customerId is required"));
+    }
+
+    let idempotency_key = request
+        .idempotency_key
+        .clone()
+        .or_else(|| header_value(&headers, IDEMPOTENCY_KEY_HEADER))
+        .or_else(|| claim_string(&request.claim, "claimId"))
+        .unwrap_or_else(|| {
+            format!(
+                "{}:{}",
+                claim_string(&request.claim, "customerId").unwrap_or_else(|| "UNKNOWN".to_string()),
+                string_or_default(&request.triage, "recommendedPath", "review")
+            )
+        });
+
+    Ok(Json(
+        state
+            .record_settlement_recommendation(request, idempotency_key)
+            .await,
+    ))
+}
+
 impl AppState {
     fn seeded() -> Self {
         Self {
@@ -246,7 +338,9 @@ impl AppState {
                 ),
             ]),
             decisions: Arc::new(Mutex::new(HashMap::new())),
+            settlement_recommendations: Arc::new(Mutex::new(HashMap::new())),
             next_decision_number: Arc::new(AtomicUsize::new(2000)),
+            next_settlement_number: Arc::new(AtomicUsize::new(3000)),
         }
     }
 
@@ -285,6 +379,21 @@ impl AppState {
         response
     }
 
+    async fn record_settlement_recommendation(
+        &self,
+        request: SettlementRecommendationRequest,
+        idempotency_key: String,
+    ) -> SettlementRecommendationResponse {
+        let mut recommendations = self.settlement_recommendations.lock().await;
+        if let Some(existing) = recommendations.get(&idempotency_key) {
+            return existing.clone();
+        }
+
+        let response = self.new_settlement_recommendation(&request);
+        recommendations.insert(idempotency_key, response.clone());
+        response
+    }
+
     fn new_decision_response(&self, request: &OfferDecisionRequest) -> OfferDecisionResponse {
         let decision_id =
             if request.customer_id == "CUST-1001" && request.offer_id == "OFFER-TRAVEL-01" {
@@ -309,6 +418,131 @@ impl AppState {
                     .collect::<String>()
                     .to_ascii_uppercase()
             ),
+        }
+    }
+
+    fn new_settlement_recommendation(
+        &self,
+        request: &SettlementRecommendationRequest,
+    ) -> SettlementRecommendationResponse {
+        let customer_id = claim_string(&request.claim, "customerId").unwrap_or_default();
+        let approval = string_or_default(&request.approval, "decision", "");
+        let triage_path = string_or_default(&request.triage, "recommendedPath", "repair");
+        let estimated_loss = u32_or_default(&request.triage, "estimatedLoss", 3200);
+        let deductible = u32_or_default(&request.coverage_review, "deductible", 500);
+        let rejected = approval.eq_ignore_ascii_case("REJECTED");
+
+        let decision_id = if customer_id == "CUST-1001" {
+            "DEC-1001".to_string()
+        } else {
+            let next = self.next_settlement_number.fetch_add(1, Ordering::SeqCst);
+            format!("DEC-{next}")
+        };
+
+        if rejected {
+            return SettlementRecommendationResponse {
+                decision_id,
+                recommended_path: "deny".to_string(),
+                settlement_amount: 0,
+                deductible,
+                customer_summary:
+                    "The claim requires denial or additional review before settlement.".to_string(),
+                next_actions: vec!["notify_customer".to_string()],
+            };
+        }
+
+        let settlement_amount = estimated_loss.saturating_sub(deductible);
+        let recommended_path = if triage_path.is_empty() {
+            "repair".to_string()
+        } else {
+            triage_path
+        };
+
+        SettlementRecommendationResponse {
+            decision_id,
+            recommended_path,
+            settlement_amount,
+            deductible,
+            customer_summary: "Repair is recommended after the deductible.".to_string(),
+            next_actions: vec!["schedule_repair".to_string(), "send_photos".to_string()],
+        }
+    }
+}
+
+impl ClaimTriageResponse {
+    fn from_request(request: &ClaimTriageRequest) -> Self {
+        let customer_id = claim_string(&request.claim, "customerId")
+            .or_else(|| claim_string(&request.customer, "customerId"))
+            .unwrap_or_default();
+        let injury_reported = bool_or_default(&request.claim, "injuryReported", false);
+        let vehicle_drivable = bool_or_default(&request.claim, "vehicleDrivable", true);
+        let recent_claim_count = u32_or_default(&request.prior_claims, "recentClaimCount", 0);
+        let policy_active = policies_include_active_policy(&request.policies);
+        let vehicle_covered = bool_or_default(&request.vehicle, "covered", false);
+        let consent = bool_or_default(&request.customer, "consent", true);
+
+        let mut reason_codes = Vec::new();
+        if !policy_active {
+            reason_codes.push("POLICY_NOT_ACTIVE".to_string());
+        }
+        if !vehicle_covered {
+            reason_codes.push("VEHICLE_NOT_COVERED".to_string());
+        }
+        if injury_reported {
+            reason_codes.push("INJURY_REPORTED".to_string());
+        }
+        if !vehicle_drivable {
+            reason_codes.push("VEHICLE_NOT_DRIVABLE".to_string());
+        }
+        if recent_claim_count > 1 {
+            reason_codes.push("RECENT_PRIOR_CLAIMS".to_string());
+        }
+        if !consent || customer_id == "CUST-3003" {
+            reason_codes.push("CUSTOMER_CONSENT_REQUIRED".to_string());
+        }
+
+        let requires_siu_review = recent_claim_count > 1 || customer_id == "CUST-2002";
+        let requires_adjuster_review =
+            injury_reported || !vehicle_drivable || !policy_active || !vehicle_covered || !consent;
+        let risk_level = if requires_siu_review {
+            "high"
+        } else if requires_adjuster_review {
+            "medium"
+        } else {
+            "low"
+        };
+        let severity = if injury_reported {
+            "high"
+        } else if !vehicle_drivable {
+            "medium"
+        } else {
+            "low"
+        };
+        let recommended_path = if requires_siu_review {
+            "siu_review"
+        } else if !policy_active || !vehicle_covered {
+            "manual_review"
+        } else {
+            "repair"
+        };
+        let estimated_loss = if !policy_active || !vehicle_covered {
+            0
+        } else if injury_reported {
+            12000
+        } else if !vehicle_drivable {
+            3200
+        } else {
+            1800
+        };
+
+        Self {
+            severity: severity.to_string(),
+            risk_level: risk_level.to_string(),
+            recommended_path: recommended_path.to_string(),
+            requires_adjuster_review,
+            requires_siu_review,
+            estimated_loss,
+            reason_codes,
         }
     }
 }
@@ -346,6 +580,43 @@ fn header_value(headers: &HeaderMap, name: &str) -> Option<String> {
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .map(str::to_string)
+}
+
+fn claim_string(value: &Value, field: &str) -> Option<String> {
+    value
+        .get(field)
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
+}
+
+fn string_or_default(value: &Value, field: &str, default: &str) -> String {
+    claim_string(value, field).unwrap_or_else(|| default.to_string())
+}
+
+fn bool_or_default(value: &Value, field: &str, default: bool) -> bool {
+    value.get(field).and_then(Value::as_bool).unwrap_or(default)
+}
+
+fn u32_or_default(value: &Value, field: &str, default: u32) -> u32 {
+    value
+        .get(field)
+        .and_then(Value::as_u64)
+        .and_then(|value| u32::try_from(value).ok())
+        .unwrap_or(default)
+}
+
+fn policies_include_active_policy(value: &Value) -> bool {
+    let policies = value.get("policies").unwrap_or(value);
+    policies.as_array().is_some_and(|policies| {
+        policies.iter().any(|policy| {
+            policy
+                .get("status")
+                .and_then(Value::as_str)
+                .is_some_and(|status| status.eq_ignore_ascii_case("active"))
+        })
+    })
 }
 
 fn init_tracing() {
@@ -471,5 +742,116 @@ mod tests {
 
         assert_eq!(decision.decision_id, "DEC-1001");
         assert_eq!(decision.offer_id, "OFFER-TRAVEL-01");
+    }
+
+    #[tokio::test]
+    async fn claim_triage_route_returns_deterministic_review_result() {
+        let body = serde_json::json!({
+            "claim": {
+                "claimId": "CLM-1001",
+                "customerId": "CUST-1001",
+                "vehicleId": "VEH-1001",
+                "injuryReported": false,
+                "vehicleDrivable": false
+            },
+            "customer": {
+                "customerId": "CUST-1001",
+                "segment": "premium",
+                "state": "ON"
+            },
+            "policies": {
+                "policies": [
+                    {
+                        "policyId": "POL-AUTO-1001",
+                        "status": "active"
+                    }
+                ]
+            },
+            "vehicle": {
+                "vehicleId": "VEH-1001",
+                "covered": true
+            },
+            "priorClaims": {
+                "priorClaimCount": 1,
+                "recentClaimCount": 0
+            }
+        });
+
+        let response = build_router()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/claim-triage")
+                    .header(header::CONTENT_TYPE, "application/json")
+                    .body(Body::from(body.to_string()))
+                    .expect("request"),
+            )
+            .await
+            .expect("response");
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("body");
+        let triage: ClaimTriageResponse = serde_json::from_slice(&body).expect("triage json");
+
+        assert_eq!(triage.risk_level, "medium");
+        assert!(triage.requires_adjuster_review);
+        assert!(!triage.requires_siu_review);
+        assert_eq!(triage.estimated_loss, 3200);
+        assert_eq!(triage.reason_codes, vec!["VEHICLE_NOT_DRIVABLE"]);
+    }
+
+    #[tokio::test]
+    async fn settlement_route_returns_idempotent_recommendation() {
+        let body = serde_json::json!({
+            "claim": {
+                "claimId": "CLM-1001",
+                "customerId": "CUST-1001"
+            },
+            "coverageReview": {
+                "deductible": 500
+            },
+            "triage": {
+                "recommendedPath": "repair",
+                "estimatedLoss": 3200
+            },
+            "approval": {
+                "decision": "APPROVED"
+            }
+        });
+
+        let request = || {
+            Request::builder()
+                .method("POST")
+                .uri("/settlement-recommendations")
+                .header(header::CONTENT_TYPE, "application/json")
+                .header(IDEMPOTENCY_KEY_HEADER, "claim-demo-1001")
+                .body(Body::from(body.to_string()))
+                .expect("request")
+        };
+
+        let app = build_router();
+        let first_response = app.clone().oneshot(request()).await.expect("response");
+        let second_response = app.oneshot(request()).await.expect("response");
+
+        assert_eq!(first_response.status(), StatusCode::OK);
+        assert_eq!(second_response.status(), StatusCode::OK);
+
+        let first_body = to_bytes(first_response.into_body(), usize::MAX)
+            .await
+            .expect("body");
+        let second_body = to_bytes(second_response.into_body(), usize::MAX)
+            .await
+            .expect("body");
+        let first: SettlementRecommendationResponse =
+            serde_json::from_slice(&first_body).expect("first settlement json");
+        let second: SettlementRecommendationResponse =
+            serde_json::from_slice(&second_body).expect("second settlement json");
+
+        assert_eq!(first, second);
+        assert_eq!(first.decision_id, "DEC-1001");
+        assert_eq!(first.settlement_amount, 2700);
+        assert_eq!(first.next_actions, vec!["schedule_repair", "send_photos"]);
     }
 }
