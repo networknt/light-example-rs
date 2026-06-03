@@ -8,11 +8,10 @@ use axum::{
     routing::get,
 };
 use light_axum::{AxumApp, AxumTransport, ServerContext};
-use light_runtime::{LightRuntimeBuilder, RuntimeError};
+use light_runtime::{LightRuntimeBuilder, RuntimeError, TracingOptions, init_tracing};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tracing::info;
-use tracing_subscriber::EnvFilter;
 
 const CONFIG_DIR_ENV: &str = "CUSTOMER_PROFILE_CONFIG_DIR";
 const EXTERNAL_CONFIG_DIR_ENV: &str = "CUSTOMER_PROFILE_EXTERNAL_CONFIG_DIR";
@@ -189,7 +188,10 @@ impl IntoResponse for ApiError {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    init_tracing();
+    let tracing_guard = init_tracing(
+        TracingOptions::new("demo-customer-profile-api").with_legacy_ansi_env(LOG_ANSI_ENV),
+    )
+    .context("failed to initialize tracing")?;
 
     let config_dir =
         std::env::var(CONFIG_DIR_ENV).unwrap_or_else(|_| DEFAULT_CONFIG_DIR.to_string());
@@ -199,6 +201,7 @@ async fn main() -> Result<()> {
     let runtime = LightRuntimeBuilder::new(AxumTransport::new(CustomerProfileApp))
         .with_config_dir(config_dir)
         .with_external_config_dir(external_config_dir)
+        .with_logging_control(tracing_guard.logging_control())
         .build();
 
     let running = runtime
@@ -591,20 +594,6 @@ impl CustomerPreferences {
 
 fn default_channel() -> String {
     "portal".to_string()
-}
-
-fn init_tracing() {
-    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
-    let use_ansi = std::env::var(LOG_ANSI_ENV)
-        .ok()
-        .map(|value| value.trim().to_lowercase())
-        .map(|value| value == "true" || value == "1" || value == "yes" || value == "on");
-
-    let subscriber = tracing_subscriber::fmt().with_env_filter(filter);
-    match use_ansi {
-        Some(use_ansi) => subscriber.with_ansi(use_ansi).init(),
-        None => subscriber.init(),
-    }
 }
 
 #[cfg(test)]

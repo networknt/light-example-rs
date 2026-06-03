@@ -102,6 +102,23 @@ is used for config-server access and controller registration. After startup,
 the control panel should show both services in service discovery with
 environment `demo`.
 
+## Logging
+
+Both apps use the shared `light-runtime` tracing setup.
+
+- `RUST_LOG=info` controls the tracing filter, for example `demo_customer_profile_api=debug,info`.
+- `LIGHT_LOG_FORMAT=text` controls console format; supported values are `text` and `json`.
+- `LIGHT_LOG_ANSI=false` controls ANSI color codes in text console output.
+- `CUSTOMER_PROFILE_LOG_ANSI=false` and `OFFER_DECISION_LOG_ANSI=false` remain legacy ANSI toggles and are used only when `LIGHT_LOG_ANSI` is unset.
+- `LIGHT_LOG_JSON_FILE_ENABLED=true` also writes JSON Lines logs to a file.
+- `LIGHT_LOG_JSON_FILE_DIR=/var/log/light-fabric` controls the JSON log directory.
+- `LIGHT_LOG_JSON_FILE_NAME=demo-customer-profile-api.jsonl` or `demo-offer-decision-api.jsonl` overrides the default service-specific file name.
+- `LIGHT_LOG_JSON_FILE_ROTATION=daily` supports `minutely`, `hourly`, `daily`, and `never`.
+
+Because these apps use `LightRuntimeBuilder`, the runtime logging filter can
+also be changed from the control plane through the runtime MCP logging tools
+after the services are registered with the controller.
+
 ## Docker Images
 
 Prerequisites for publishing:

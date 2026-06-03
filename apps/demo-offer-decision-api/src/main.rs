@@ -8,7 +8,7 @@ use axum::{
     routing::{get, post},
 };
 use light_axum::{AxumApp, AxumTransport, ServerContext};
-use light_runtime::{LightRuntimeBuilder, RuntimeError};
+use light_runtime::{LightRuntimeBuilder, RuntimeError, TracingOptions, init_tracing};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{
@@ -20,7 +20,6 @@ use std::{
 };
 use tokio::sync::Mutex;
 use tracing::info;
-use tracing_subscriber::EnvFilter;
 
 const CONFIG_DIR_ENV: &str = "OFFER_DECISION_CONFIG_DIR";
 const EXTERNAL_CONFIG_DIR_ENV: &str = "OFFER_DECISION_EXTERNAL_CONFIG_DIR";
@@ -181,7 +180,10 @@ impl IntoResponse for ApiError {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    init_tracing();
+    let tracing_guard = init_tracing(
+        TracingOptions::new("demo-offer-decision-api").with_legacy_ansi_env(LOG_ANSI_ENV),
+    )
+    .context("failed to initialize tracing")?;
 
     let config_dir =
         std::env::var(CONFIG_DIR_ENV).unwrap_or_else(|_| DEFAULT_CONFIG_DIR.to_string());
@@ -191,6 +193,7 @@ async fn main() -> Result<()> {
     let runtime = LightRuntimeBuilder::new(AxumTransport::new(OfferDecisionApp))
         .with_config_dir(config_dir)
         .with_external_config_dir(external_config_dir)
+        .with_logging_control(tracing_guard.logging_control())
         .build();
 
     let running = runtime
@@ -617,20 +620,6 @@ fn policies_include_active_policy(value: &Value) -> bool {
                 .is_some_and(|status| status.eq_ignore_ascii_case("active"))
         })
     })
-}
-
-fn init_tracing() {
-    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
-    let use_ansi = std::env::var(LOG_ANSI_ENV)
-        .ok()
-        .map(|value| value.trim().to_lowercase())
-        .map(|value| value == "true" || value == "1" || value == "yes" || value == "on");
-
-    let subscriber = tracing_subscriber::fmt().with_env_filter(filter);
-    match use_ansi {
-        Some(use_ansi) => subscriber.with_ansi(use_ansi).init(),
-        None => subscriber.init(),
-    }
 }
 
 #[cfg(test)]
