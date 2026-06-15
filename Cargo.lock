@@ -1424,6 +1424,7 @@ dependencies = [
  "config-loader",
  "futures-util",
  "jsonwebtoken",
+ "rand 0.8.6",
  "rustls",
  "rustls-pemfile",
  "serde",
