@@ -37,7 +37,7 @@ paths:
       tags:
         - Offers
       operationId: searchOffers
-      summary: Search active offers
+      summary: Search offers
       parameters:
         - name: segment
           in: query
@@ -62,7 +62,7 @@ paths:
           example: travel
       responses:
         "200":
-          description: Active offers matching the supplied filters, sorted by priority.
+          description: Offers matching the supplied filters, sorted by priority.
           content:
             application/json:
               schema:
@@ -79,6 +79,34 @@ paths:
                       category: travel
                       priority: 1
                       active: true
+                    - offerId: OFFER-TRAVEL-02
+                      title: Premium airport lounge pass
+                      segment: premium
+                      state: ON
+                      category: travel
+                      priority: 25
+                      active: true
+                    - offerId: OFFER-TRAVEL-04
+                      title: Inactive travel upgrade
+                      segment: premium
+                      state: ON
+                      category: travel
+                      priority: 35
+                      active: false
+                    - offerId: OFFER-TRAVEL-03
+                      title: Premium hotel bonus
+                      segment: premium
+                      state: ON
+                      category: travel
+                      priority: 55
+                      active: true
+                    - offerId: OFFER-TRAVEL-05
+                      title: Expired travel rebate
+                      segment: premium
+                      state: ON
+                      category: travel
+                      priority: 80
+                      active: false
   /offer-decisions:
     post:
       tags:
@@ -133,7 +161,7 @@ paths:
                 inactiveOffer:
                   value:
                     code: INVALID_DECISION_REQUEST
-                    message: offer OFFER-EXPIRED-01 is not active or does not exist
+                    message: offer OFFER-TRAVEL-05 is not active or does not exist
   /claim-triage:
     post:
       tags:
@@ -489,4 +517,4 @@ components:
           example: INVALID_DECISION_REQUEST
         message:
           type: string
-          example: offer OFFER-EXPIRED-01 is not active or does not exist
+          example: offer OFFER-TRAVEL-05 is not active or does not exist

@@ -322,6 +322,42 @@ impl AppState {
                     true,
                 ),
                 Offer::new(
+                    "OFFER-TRAVEL-02",
+                    "Premium airport lounge pass",
+                    "premium",
+                    "ON",
+                    "travel",
+                    25,
+                    true,
+                ),
+                Offer::new(
+                    "OFFER-TRAVEL-03",
+                    "Premium hotel bonus",
+                    "premium",
+                    "ON",
+                    "travel",
+                    55,
+                    true,
+                ),
+                Offer::new(
+                    "OFFER-TRAVEL-04",
+                    "Inactive travel upgrade",
+                    "premium",
+                    "ON",
+                    "travel",
+                    35,
+                    false,
+                ),
+                Offer::new(
+                    "OFFER-TRAVEL-05",
+                    "Expired travel rebate",
+                    "premium",
+                    "ON",
+                    "travel",
+                    80,
+                    false,
+                ),
+                Offer::new(
                     "OFFER-CASHBACK-01",
                     "Premium shopping cashback",
                     "premium",
@@ -329,15 +365,6 @@ impl AppState {
                     "shopping",
                     2,
                     true,
-                ),
-                Offer::new(
-                    "OFFER-EXPIRED-01",
-                    "Expired welcome credit",
-                    "premium",
-                    "ON",
-                    "travel",
-                    9,
-                    false,
                 ),
             ]),
             decisions: Arc::new(Mutex::new(HashMap::new())),
@@ -351,7 +378,6 @@ impl AppState {
         let mut matches: Vec<Offer> = self
             .offers
             .iter()
-            .filter(|offer| offer.active)
             .filter(|offer| optional_match(query.segment.as_deref(), offer.segment.as_str()))
             .filter(|offer| optional_match(query.state.as_deref(), offer.state.as_str()))
             .filter(|offer| optional_match(query.category.as_deref(), offer.category.as_str()))
@@ -632,7 +658,7 @@ mod tests {
     use tower::ServiceExt;
 
     #[test]
-    fn search_returns_active_matching_offer_only() {
+    fn search_returns_matching_offers_for_filter_demo() {
         let state = AppState::seeded();
         let query = OfferQuery {
             segment: Some("premium".to_string()),
@@ -642,8 +668,15 @@ mod tests {
 
         let offers = state.search_offers(&query);
 
-        assert_eq!(offers.len(), 1);
+        assert_eq!(offers.len(), 5);
         assert_eq!(offers[0].offer_id, "OFFER-TRAVEL-01");
+        assert_eq!(offers[1].offer_id, "OFFER-TRAVEL-02");
+        assert_eq!(offers[2].offer_id, "OFFER-TRAVEL-04");
+        assert_eq!(offers[3].offer_id, "OFFER-TRAVEL-03");
+        assert_eq!(offers[4].offer_id, "OFFER-TRAVEL-05");
+        assert!(offers[0].active);
+        assert!(offers[1].active);
+        assert!(!offers[2].active);
     }
 
     #[tokio::test]
@@ -696,8 +729,12 @@ mod tests {
             .expect("body");
         let offers: Vec<Offer> = serde_json::from_slice(&body).expect("offers json");
 
-        assert_eq!(offers.len(), 1);
+        assert_eq!(offers.len(), 5);
         assert_eq!(offers[0].offer_id, "OFFER-TRAVEL-01");
+        assert_eq!(offers[1].offer_id, "OFFER-TRAVEL-02");
+        assert_eq!(offers[2].offer_id, "OFFER-TRAVEL-04");
+        assert_eq!(offers[3].offer_id, "OFFER-TRAVEL-03");
+        assert_eq!(offers[4].offer_id, "OFFER-TRAVEL-05");
     }
 
     #[tokio::test]
