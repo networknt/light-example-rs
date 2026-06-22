@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "apps/demo-customer-profile-api",
+    "apps/demo-insurance-claim-mcp-server",
     "apps/demo-offer-decision-api",
 ]
 resolver = "2"

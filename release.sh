@@ -18,6 +18,7 @@ TARGETS=(
 
 APPS=(
   "demo-customer-profile-api:apps/demo-customer-profile-api"
+  "demo-insurance-claim-mcp-server:apps/demo-insurance-claim-mcp-server"
   "demo-offer-decision-api:apps/demo-offer-decision-api"
 )
 

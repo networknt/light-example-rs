@@ -17,6 +17,7 @@ WORKSPACE_ROOT="$(cd "${REPO_ROOT}/.." && pwd)"
 
 APPS=(
   "demo-customer-profile-api:apps/demo-customer-profile-api:8085"
+  "demo-insurance-claim-mcp-server:apps/demo-insurance-claim-mcp-server:8087"
   "demo-offer-decision-api:apps/demo-offer-decision-api:8086"
 )
 
@@ -38,6 +39,7 @@ show_help() {
   echo " "
   echo "    apps:"
   echo "          demo-customer-profile-api"
+  echo "          demo-insurance-claim-mcp-server"
   echo "          demo-offer-decision-api"
   echo " "
   echo "    examples:"

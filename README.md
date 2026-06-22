@@ -4,12 +4,13 @@ Rust example applications for Light-Fabric.
 
 ## Demo Workflow Orchestration APIs
 
-This repository contains two small `light-axum` services for the skill and
+This repository contains three small `light-axum` services for the skill and
 workflow orchestration demo:
 
 | App | Service id | Default port | Endpoints |
 | --- | --- | ---: | --- |
 | `demo-customer-profile-api` | `com.networknt.demo.customer-profile-1.0.0` | `8085` | `GET /customers/{customerId}`, `GET /customers/{customerId}/preferences`, `GET /customers/{customerId}/policies`, `GET /customers/{customerId}/vehicles/{vehicleId}`, `GET /customers/{customerId}/prior-claims`, `GET /health` |
+| `demo-insurance-claim-mcp-server` | `com.networknt.demo.insurance-claim-mcp-1.0.0` | `8087` | `POST /mcp`, `DELETE /mcp`, `GET /health` |
 | `demo-offer-decision-api` | `com.networknt.demo.offer-decision-1.0.0` | `8086` | `GET /offers`, `POST /offer-decisions`, `POST /claim-triage`, `POST /settlement-recommendations`, `GET /health` |
 
 Both apps use `LightRuntimeBuilder` with `AxumTransport`, so they can load
@@ -26,6 +27,7 @@ From the repository root:
 
 ```sh
 cargo run -p demo-customer-profile-api
+cargo run -p demo-insurance-claim-mcp-server
 cargo run -p demo-offer-decision-api
 ```
 
@@ -49,6 +51,13 @@ curl -s -X POST http://127.0.0.1:8086/settlement-recommendations \
   -H 'content-type: application/json' \
   -H 'idempotency-key: claim-demo-1001' \
   -d '{"claim":{"claimId":"CLM-1001","customerId":"CUST-1001"},"coverageReview":{"deductible":500},"triage":{"recommendedPath":"repair","estimatedLoss":3200},"approval":{"decision":"APPROVED"}}'
+curl -i -s -X POST http://127.0.0.1:8087/mcp \
+  -H 'content-type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"demo","version":"1.0.0"}}}'
+curl -s -X POST http://127.0.0.1:8087/mcp \
+  -H 'content-type: application/json' \
+  -H 'mcp-session-id: <session-id-from-initialize>' \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
 ```
 
 Insurance claim demo records are deterministic:
@@ -83,6 +92,7 @@ For a full portal demo, publish values equivalent to:
 
 ```text
 config-registry/demo-customer-profile-api/values.yml
+config-registry/demo-insurance-claim-mcp-server/values.yml
 config-registry/demo-offer-decision-api/values.yml
 ```
 
@@ -110,6 +120,7 @@ Both apps use the shared `light-runtime` tracing setup.
 - `LIGHT_LOG_FORMAT=text` controls console format; supported values are `text` and `json`.
 - `LIGHT_LOG_ANSI=false` controls ANSI color codes in text console output.
 - `CUSTOMER_PROFILE_LOG_ANSI=false` and `OFFER_DECISION_LOG_ANSI=false` remain legacy ANSI toggles and are used only when `LIGHT_LOG_ANSI` is unset.
+- `INSURANCE_CLAIM_MCP_LOG_ANSI=false` is the legacy ANSI toggle for the MCP server and is used only when `LIGHT_LOG_ANSI` is unset.
 - `LIGHT_LOG_JSON_FILE_ENABLED=true` also writes JSON Lines logs to a file.
 - `LIGHT_LOG_JSON_FILE_DIR=/var/log/light-fabric` controls the JSON log directory.
 - `LIGHT_LOG_JSON_FILE_NAME=demo-customer-profile-api.jsonl` or `demo-offer-decision-api.jsonl` overrides the default service-specific file name.
@@ -142,12 +153,13 @@ The default Docker Hub namespace is `networknt`, producing:
 
 ```text
 networknt/demo-customer-profile-api:0.1.0
+networknt/demo-insurance-claim-mcp-server:0.1.0
 networknt/demo-offer-decision-api:0.1.0
 ```
 
 Use `DOCKER_ORG` or `--image-org` to publish under another namespace. Use
-`--app demo-customer-profile-api` or `--app demo-offer-decision-api` to build
-one image.
+`--app demo-customer-profile-api`, `--app demo-insurance-claim-mcp-server`, or
+`--app demo-offer-decision-api` to build one image.
 
 The Docker build context is the parent workspace directory because this repo
 uses local path dependencies from `../light-fabric`.
@@ -177,7 +189,9 @@ The release archives include both binaries plus their config templates:
 
 ```text
 bin/demo-customer-profile-api
+bin/demo-insurance-claim-mcp-server
 bin/demo-offer-decision-api
 config/demo-customer-profile-api/
+config/demo-insurance-claim-mcp-server/
 config/demo-offer-decision-api/
 ```

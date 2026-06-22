@@ -434,6 +434,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "demo-insurance-claim-mcp-server"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "axum",
+ "light-axum",
+ "light-runtime",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tower",
+ "tracing",
+]
+
+[[package]]
 name = "demo-offer-decision-api"
 version = "0.1.0"
 dependencies = [
