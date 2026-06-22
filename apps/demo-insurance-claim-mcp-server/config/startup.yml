@@ -1,6 +1,6 @@
 host: ${startup.host:dev.lightapi.net}
 serviceId: ${server.serviceId:com.networknt.demo.insurance-claim-mcp-1.0.0}
-envTag: ${server.environment:demo}
+envTag: ${server.environment:dev}
 acceptHeader: application/yaml
 timeout: ${startup.timeout:3000}
 connectTimeout: ${startup.connectTimeout:3000}

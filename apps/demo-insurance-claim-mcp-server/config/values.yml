@@ -5,7 +5,7 @@ startup.externalConfigDir: apps/demo-insurance-claim-mcp-server/config-cache
 light-config-server-uri:
 
 server.serviceId: com.networknt.demo.insurance-claim-mcp-1.0.0
-server.environment: demo
+server.environment: dev
 server.ip: 0.0.0.0
 server.advertisedAddress: 127.0.0.1
 server.httpPort: 8087
