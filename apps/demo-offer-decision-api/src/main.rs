@@ -194,6 +194,7 @@ async fn main() -> Result<()> {
         .with_config_dir(config_dir)
         .with_external_config_dir(external_config_dir)
         .with_logging_control(tracing_guard.logging_control())
+        .with_log_stream(tracing_guard.log_stream())
         .build();
 
     let running = runtime
