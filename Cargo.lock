@@ -87,7 +87,7 @@ dependencies = [
 
 [[package]]
 name = "asymmetric-decryptor"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "base64",
  "rsa",
@@ -362,7 +362,7 @@ dependencies = [
 
 [[package]]
 name = "config-loader"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "arc-swap",
  "asymmetric-decryptor",
@@ -1124,7 +1124,7 @@ checksum = "b6d2cec3eae94f9f509c767b45932f1ada8350c4bdb85af2fcab4a3c14807981"
 
 [[package]]
 name = "light-axum"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1139,7 +1139,7 @@ dependencies = [
 
 [[package]]
 name = "light-client"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "reqwest",
  "rustls-pemfile",
@@ -1153,7 +1153,7 @@ dependencies = [
 
 [[package]]
 name = "light-runtime"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1485,7 +1485,7 @@ checksum = "c33a9471896f1c69cecef8d20cbe2f7accd12527ce60845ff44c153bb2a21b49"
 
 [[package]]
 name = "portal-registry"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "asymmetric-decryptor",
@@ -2175,7 +2175,7 @@ checksum = "a7973cce6668464ea31f176d85b13c7ab3bba2cb3b77a2ed26abd7801688010a"
 
 [[package]]
 name = "symmetric-decryptor"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "aes",
  "block-padding",
