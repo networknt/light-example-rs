@@ -8,7 +8,9 @@ use axum::{
     routing::{get, post},
 };
 use light_axum::{AxumApp, AxumTransport, ServerContext};
-use light_runtime::{LightRuntimeBuilder, RuntimeError, TracingOptions, init_tracing};
+use light_runtime::{
+    LightRuntimeBuilder, RuntimeError, ShutdownWatcher, TracingOptions, init_tracing,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::{
@@ -117,6 +119,7 @@ impl McpError {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    let watcher = ShutdownWatcher::install().context("failed to install shutdown handlers")?;
     let tracing_guard = init_tracing(
         TracingOptions::new("demo-insurance-claim-mcp-server").with_legacy_ansi_env(LOG_ANSI_ENV),
     )
@@ -134,21 +137,11 @@ async fn main() -> Result<()> {
         .with_log_stream(tracing_guard.log_stream())
         .build();
 
-    let running = runtime
-        .start()
-        .await
-        .context("failed to start demo insurance claim MCP server")?;
-
     info!("demo insurance claim MCP server started");
-
-    tokio::signal::ctrl_c()
+    runtime
+        .run_until_shutdown(watcher)
         .await
-        .context("failed to listen for shutdown signal")?;
-
-    running
-        .shutdown()
-        .await
-        .context("failed to shut down demo insurance claim MCP server")?;
+        .context("demo insurance claim MCP server lifecycle failed")?;
 
     Ok(())
 }
