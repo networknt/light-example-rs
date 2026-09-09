@@ -10,7 +10,7 @@ workflow orchestration demo:
 | App | Service id | Default port | Endpoints |
 | --- | --- | ---: | --- |
 | `demo-customer-profile-api` | `com.networknt.demo.customer-profile-1.0.0` | `8085` | `GET /customers/{customerId}`, `GET /customers/{customerId}/preferences`, `GET /customers/{customerId}/policies`, `GET /customers/{customerId}/vehicles/{vehicleId}`, `GET /customers/{customerId}/prior-claims`, `GET /health` |
-| `demo-insurance-claim-mcp-server` | `com.networknt.demo.insurance-claim-mcp-1.0.0` | `8087` | `POST /mcp`, `DELETE /mcp`, `GET /health` |
+| `demo-insurance-claim-mcp-server` | `com.networknt.demo.insurance-claim-mcp-1.0.0` | `8087` | `POST /mcp` (2026-07-28 stateless), `GET /health` |
 | `demo-offer-decision-api` | `com.networknt.demo.offer-decision-1.0.0` | `8086` | `GET /offers`, `POST /offer-decisions`, `POST /claim-triage`, `POST /settlement-recommendations`, `GET /health` |
 
 Both apps use `LightRuntimeBuilder` with `AxumTransport`, so they can load
@@ -195,3 +195,5 @@ config/demo-customer-profile-api/
 config/demo-insurance-claim-mcp-server/
 config/demo-offer-decision-api/
 ```
+
+See the [insurance MCP migration and publication guide](apps/demo-insurance-claim-mcp-server/README.md) for required modern client and backend settings.

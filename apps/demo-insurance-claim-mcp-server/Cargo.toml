@@ -7,6 +7,7 @@ authors.workspace = true
 repository.workspace = true
 
 [dependencies]
+mcp-client = { path = "../../../light-fabric/crates/mcp-client" }
 anyhow = { workspace = true }
 async-trait = { workspace = true }
 axum = { workspace = true }
@@ -18,4 +19,5 @@ tokio = { workspace = true }
 tracing = { workspace = true }
 
 [dev-dependencies]
+light-pingora = { path = "../../../light-fabric/frameworks/light-pingora" }
 tower = "0.5"

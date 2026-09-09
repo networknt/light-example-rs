@@ -2,7 +2,8 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use axum::{
     Json, Router,
-    extract::State,
+    body::Bytes,
+    extract::DefaultBodyLimit,
     http::{HeaderMap, HeaderName, HeaderValue, StatusCode},
     response::{IntoResponse, Response},
     routing::{get, post},
@@ -11,15 +12,9 @@ use light_axum::{AxumApp, AxumTransport, ServerContext};
 use light_runtime::{
     LightRuntimeBuilder, RuntimeError, ShutdownWatcher, TracingOptions, init_tracing,
 };
+use mcp_client::wire;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use std::{
-    collections::HashMap,
-    sync::{
-        Arc, RwLock,
-        atomic::{AtomicU64, Ordering},
-    },
-};
 use tracing::info;
 
 const CONFIG_DIR_ENV: &str = "INSURANCE_CLAIM_MCP_CONFIG_DIR";
@@ -29,7 +24,7 @@ const DEFAULT_CONFIG_DIR: &str = "apps/demo-insurance-claim-mcp-server/config";
 const DEFAULT_EXTERNAL_CONFIG_DIR: &str = "apps/demo-insurance-claim-mcp-server/config-cache";
 const MCP_SESSION_ID: HeaderName = HeaderName::from_static("mcp-session-id");
 const MCP_PROTOCOL_VERSION: HeaderName = HeaderName::from_static("mcp-protocol-version");
-const DEFAULT_PROTOCOL_VERSION: &str = "2025-06-18";
+const DEFAULT_PROTOCOL_VERSION: &str = "2026-07-28";
 
 #[derive(Clone, Default)]
 struct InsuranceClaimMcpApp;
@@ -39,17 +34,6 @@ impl AxumApp for InsuranceClaimMcpApp {
     async fn router(&self, _context: ServerContext) -> std::result::Result<Router, RuntimeError> {
         Ok(build_router())
     }
-}
-
-#[derive(Clone)]
-struct AppState {
-    sessions: Arc<RwLock<HashMap<String, McpSession>>>,
-    next_session: Arc<AtomicU64>,
-}
-
-#[derive(Clone)]
-struct McpSession {
-    protocol_version: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -65,8 +49,6 @@ struct JsonRpcRequest {
     method: String,
     #[serde(default)]
     params: Value,
-    #[serde(default)]
-    id: Option<Value>,
 }
 
 #[derive(Debug, Serialize)]
@@ -99,13 +81,6 @@ impl McpError {
         Self {
             code: -32602,
             message: message.into(),
-        }
-    }
-
-    fn method_not_found(method: &str) -> Self {
-        Self {
-            code: -32601,
-            message: format!("method `{method}` not found"),
         }
     }
 
@@ -149,11 +124,8 @@ async fn main() -> Result<()> {
 fn build_router() -> Router {
     Router::new()
         .route("/health", get(health))
-        .route("/mcp", post(handle_mcp).delete(delete_mcp_session))
-        .with_state(AppState {
-            sessions: Arc::new(RwLock::new(HashMap::new())),
-            next_session: Arc::new(AtomicU64::new(1)),
-        })
+        .route("/mcp", post(handle_mcp))
+        .layer(DefaultBodyLimit::max(1024 * 1024))
 }
 
 async fn health() -> Json<HealthResponse> {
@@ -163,120 +135,179 @@ async fn health() -> Json<HealthResponse> {
     })
 }
 
-async fn handle_mcp(
-    State(state): State<AppState>,
-    headers: HeaderMap,
-    Json(request): Json<JsonRpcRequest>,
-) -> Response {
-    if request.jsonrpc.as_deref() != Some("2.0") {
-        return json_rpc_error_response(request.id, -32600, "invalid JSON-RPC version");
+async fn handle_mcp(headers: HeaderMap, body: Bytes) -> Response {
+    if headers.get_all("content-type").iter().count() != 1
+        || headers
+            .get("content-type")
+            .and_then(|v| v.to_str().ok())
+            .is_none_or(|v| v.split(';').next().unwrap_or("").trim() != "application/json")
+    {
+        return StatusCode::UNSUPPORTED_MEDIA_TYPE.into_response();
     }
-
-    if request.method == "initialize" {
-        return initialize_session(state, request).await;
-    }
-
-    let session = match require_session(&state, &headers) {
-        Ok(session) => session,
-        Err(error) => {
-            return json_rpc_error_response(request.id, error.code, error.message);
-        }
+    let value: Value = match serde_json::from_slice(&body) {
+        Ok(value) => value,
+        Err(_) => return modern_error(Value::Null, -32700, "invalid JSON", None),
     };
-
-    if request.id.is_none() && request.method == "notifications/initialized" {
-        return accepted_response(Some(session.protocol_version.as_str()));
-    }
-
-    let id = request.id.clone();
-    let result = match request.method.as_str() {
-        "tools/list" => Ok(json!({ "tools": tool_definitions() })),
-        "tools/call" => execute_tool_call(&request.params),
-        method => Err(McpError::method_not_found(method)),
-    };
-
-    match result {
-        Ok(result) => json_rpc_result_response(
-            id,
-            result,
-            Some(session.protocol_version.as_str()),
-            None::<&str>,
-        ),
-        Err(error) => json_rpc_error_response(id, error.code, error.message),
-    }
-}
-
-async fn delete_mcp_session(State(state): State<AppState>, headers: HeaderMap) -> Response {
-    let Some(session_id) = header_str(&headers, &MCP_SESSION_ID) else {
-        return json_rpc_error_response(None, -32602, "missing Mcp-Session-Id");
-    };
-    let removed = state
-        .sessions
-        .write()
-        .expect("session store lock poisoned")
-        .remove(session_id);
-    accepted_response(
-        removed
-            .as_ref()
-            .map(|session| session.protocol_version.as_str()),
-    )
-}
-
-async fn initialize_session(state: AppState, request: JsonRpcRequest) -> Response {
-    let requested_protocol = request
-        .params
-        .get("protocolVersion")
-        .and_then(Value::as_str)
-        .unwrap_or(DEFAULT_PROTOCOL_VERSION);
-    let protocol_version = if requested_protocol.trim().is_empty() {
-        DEFAULT_PROTOCOL_VERSION
-    } else {
-        requested_protocol
-    };
-    let session_number = state.next_session.fetch_add(1, Ordering::Relaxed);
-    let session_id = format!("demo-insurance-claim-mcp-{session_number}");
-    state
-        .sessions
-        .write()
-        .expect("session store lock poisoned")
-        .insert(
-            session_id.clone(),
-            McpSession {
-                protocol_version: protocol_version.to_string(),
-            },
+    let id = value.get("id").cloned().unwrap_or(Value::Null);
+    if !(id.is_string() || id.is_i64() || id.is_u64()) {
+        return modern_error(
+            Value::Null,
+            -32600,
+            "request id must be a string or integer",
+            None,
         );
-
-    json_rpc_result_response(
-        request.id,
-        json!({
-            "protocolVersion": protocol_version,
-            "capabilities": {
-                "tools": {
-                    "listChanged": false
-                }
-            },
-            "serverInfo": {
-                "name": "demo-insurance-claim-mcp-server",
-                "version": env!("CARGO_PKG_VERSION")
+    }
+    let request: JsonRpcRequest = match serde_json::from_value(value) {
+        Ok(request) => request,
+        Err(_) => return modern_error(id, -32600, "invalid request", None),
+    };
+    if request.jsonrpc.as_deref() != Some("2.0") || !request.params.is_object() {
+        return modern_error(id, -32600, "invalid JSON-RPC request", None);
+    }
+    if headers.contains_key("origin") {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+    if headers.contains_key(MCP_SESSION_ID) {
+        return modern_error(
+            id,
+            -32600,
+            "stateless requests cannot contain a session",
+            None,
+        );
+    }
+    let version = header_str(&headers, &MCP_PROTOCOL_VERSION).unwrap_or("");
+    if headers.get_all(MCP_PROTOCOL_VERSION).iter().count() != 1
+        || version.is_empty()
+        || version.len() != 10
+        || !version.bytes().enumerate().all(|(i, b)| {
+            if i == 4 || i == 7 {
+                b == b'-'
+            } else {
+                b.is_ascii_digit()
             }
-        }),
-        Some(protocol_version),
-        Some(session_id.as_str()),
-    )
+        })
+    {
+        return modern_error(id, -32020, "invalid MCP-Protocol-Version header", None);
+    }
+    if version != DEFAULT_PROTOCOL_VERSION {
+        return modern_error(
+            id,
+            -32022,
+            "unsupported protocol version",
+            Some(json!({"requested":version,"supported":[DEFAULT_PROTOCOL_VERSION]})),
+        );
+    }
+    let accept = headers
+        .get_all("accept")
+        .iter()
+        .filter_map(|v| v.to_str().ok())
+        .flat_map(|v| v.split(','))
+        .map(|v| v.trim().to_ascii_lowercase())
+        .collect::<Vec<_>>();
+    if !["application/json", "text/event-stream"]
+        .iter()
+        .all(|required| accept.iter().any(|v| v == required))
+    {
+        return StatusCode::NOT_ACCEPTABLE.into_response();
+    }
+    if headers.get_all("mcp-method").iter().count() != 1
+        || headers.get("mcp-method").and_then(|v| v.to_str().ok()) != Some(request.method.as_str())
+    {
+        return modern_error(id, -32020, "Mcp-Method mismatch", None);
+    }
+    let meta = &request.params["_meta"];
+    if meta[wire::VERSION_META] != DEFAULT_PROTOCOL_VERSION {
+        return modern_error(
+            id,
+            if meta.get(wire::VERSION_META).is_none() {
+                -32602
+            } else {
+                -32020
+            },
+            "protocol metadata mismatch",
+            None,
+        );
+    }
+    if !meta[wire::CAPABILITIES_META].is_object() {
+        return modern_error(
+            id,
+            -32602,
+            "clientCapabilities metadata must be an object",
+            None,
+        );
+    }
+    if let Some(info) = meta.get(wire::CLIENT_META) {
+        if !["name", "version"].iter().all(|key| {
+            info[*key]
+                .as_str()
+                .is_some_and(|s| !s.is_empty() && s.len() <= 1024)
+        }) {
+            return modern_error(id, -32600, "invalid clientInfo", None);
+        }
+    }
+    if request.method != "tools/call" && headers.contains_key("mcp-name") {
+        return modern_error(id, -32020, "unexpected Mcp-Name", None);
+    }
+    if headers.keys().any(|k| k.as_str().starts_with("mcp-param-")) {
+        return modern_error(id, -32020, "no parameter headers are declared", None);
+    }
+    let result = match request.method.as_str() {
+        "server/discover" => {
+            json!({"supportedVersions":[DEFAULT_PROTOCOL_VERSION],"_meta":{"io.modelcontextprotocol/serverInfo":{"name":"demo-insurance-claim-mcp-server","version":env!("CARGO_PKG_VERSION")}},"capabilities":{"tools":{}},"ttlMs":30000,"cacheScope":"public"})
+        }
+        "tools/list" => json!({"tools":tool_definitions(),"ttlMs":30000,"cacheScope":"public"}),
+        "tools/call" => {
+            let Some(name) = request.params["name"].as_str() else {
+                return modern_error(id, -32602, "tool name required", None);
+            };
+            if headers.get_all("mcp-name").iter().count() != 1
+                || headers
+                    .get("mcp-name")
+                    .and_then(|v| v.to_str().ok())
+                    .and_then(|v| wire::decode_header(v).ok())
+                    .as_deref()
+                    != Some(name)
+            {
+                return modern_error(id, -32020, "Mcp-Name mismatch", None);
+            }
+            if !tool_definitions().iter().any(|t| t["name"] == name) {
+                return modern_error(id, -32602, "unknown tool", None);
+            }
+            if request
+                .params
+                .get("arguments")
+                .is_some_and(|v| !v.is_object())
+            {
+                return modern_error(id, -32602, "arguments must be an object", None);
+            }
+            let mut result = match execute_tool_call(&request.params) {
+                Ok(value) => value,
+                Err(error) => {
+                    json!({"content":[{"type":"text","text":error.message}],"isError":true})
+                }
+            };
+            result["resultType"] = json!("complete");
+            result
+        }
+        _ => return modern_error(id, -32601, "method not supported", None),
+    };
+    json_rpc_result_response(Some(id), result, Some(DEFAULT_PROTOCOL_VERSION), None)
 }
 
-fn require_session(
-    state: &AppState,
-    headers: &HeaderMap,
-) -> std::result::Result<McpSession, McpError> {
-    let session_id = header_str(headers, &MCP_SESSION_ID)
-        .ok_or_else(|| McpError::invalid_params("missing Mcp-Session-Id"))?;
-    state
-        .sessions
-        .read()
-        .expect("session store lock poisoned")
-        .get(session_id)
-        .cloned()
-        .ok_or_else(|| McpError::invalid_params("unknown Mcp-Session-Id"))
+fn modern_error(id: Value, code: i32, message: &str, data: Option<Value>) -> Response {
+    let mut error = json!({"code":code,"message":message});
+    if let Some(data) = data {
+        error["data"] = data;
+    }
+    (
+        if code == -32601 {
+            StatusCode::NOT_FOUND
+        } else {
+            StatusCode::BAD_REQUEST
+        },
+        Json(json!({"jsonrpc":"2.0","id":id,"error":error})),
+    )
+        .into_response()
 }
 
 fn execute_tool_call(params: &Value) -> std::result::Result<Value, McpError> {
@@ -712,28 +743,6 @@ fn json_rpc_result_response(
     response
 }
 
-fn json_rpc_error_response(id: Option<Value>, code: i32, message: impl Into<String>) -> Response {
-    Json(JsonRpcResponse {
-        jsonrpc: "2.0",
-        result: None,
-        error: Some(JsonRpcError {
-            code,
-            message: message.into(),
-            data: None,
-        }),
-        id,
-    })
-    .into_response()
-}
-
-fn accepted_response(protocol_version: Option<&str>) -> Response {
-    let mut response = StatusCode::ACCEPTED.into_response();
-    if let Some(protocol_version) = protocol_version {
-        insert_header(&mut response, &MCP_PROTOCOL_VERSION, protocol_version);
-    }
-    response
-}
-
 fn insert_header(response: &mut Response, name: &HeaderName, value: &str) {
     if let Ok(value) = HeaderValue::from_str(value) {
         response.headers_mut().insert(name, value);
@@ -746,6 +755,108 @@ mod tests {
     use axum::body::{Body, to_bytes};
     use axum::http::Request;
     use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn malformed_capabilities_have_no_required_capabilities_data() {
+        for capabilities in [
+            None,
+            Some(Value::Null),
+            Some(json!([])),
+            Some(json!("invalid")),
+            Some(json!({})),
+        ] {
+            let valid = capabilities.as_ref().is_some_and(Value::is_object);
+            let mut meta = json!({wire::VERSION_META:DEFAULT_PROTOCOL_VERSION});
+            if let Some(capabilities) = capabilities {
+                meta[wire::CAPABILITIES_META] = capabilities;
+            }
+            let request =
+                json!({"jsonrpc":"2.0","id":1,"method":"server/discover","params":{"_meta":meta}});
+            let response = build_router()
+                .oneshot(
+                    Request::builder()
+                        .method("POST")
+                        .uri("/mcp")
+                        .header("content-type", "application/json")
+                        .header("accept", "application/json, text/event-stream")
+                        .header("mcp-method", "server/discover")
+                        .header(MCP_PROTOCOL_VERSION, DEFAULT_PROTOCOL_VERSION)
+                        .body(Body::from(serde_json::to_vec(&request).unwrap()))
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(
+                response.status(),
+                if valid {
+                    StatusCode::OK
+                } else {
+                    StatusCode::BAD_REQUEST
+                }
+            );
+            let body = response_json(response).await;
+            if valid {
+                assert!(body.get("error").is_none());
+            } else {
+                assert_eq!(body["error"]["code"], -32602);
+                assert!(body["error"].get("data").is_none());
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn semantic_name_and_protocol_header_regressions() {
+        for (name, versions, expected) in [
+            ("classifyLiability", vec![DEFAULT_PROTOCOL_VERSION], None),
+            (
+                "=?base64?Y2xhc3NpZnlMaWFiaWxpdHk=?=",
+                vec![DEFAULT_PROTOCOL_VERSION],
+                None,
+            ),
+            (
+                "=?base64?!!?=",
+                vec![DEFAULT_PROTOCOL_VERSION],
+                Some(-32020),
+            ),
+            ("wrong", vec![DEFAULT_PROTOCOL_VERSION], Some(-32020)),
+            ("classifyLiability", vec![], Some(-32020)),
+            (
+                "classifyLiability",
+                vec![DEFAULT_PROTOCOL_VERSION, DEFAULT_PROTOCOL_VERSION],
+                Some(-32020),
+            ),
+            ("classifyLiability", vec!["invalid"], Some(-32020)),
+            ("classifyLiability", vec!["2025-11-25"], Some(-32022)),
+        ] {
+            let mut headers = HeaderMap::new();
+            headers.insert("content-type", HeaderValue::from_static("application/json"));
+            headers.insert(
+                "accept",
+                HeaderValue::from_static("application/json, text/event-stream"),
+            );
+            headers.insert("mcp-method", HeaderValue::from_static("tools/call"));
+            headers.insert("mcp-name", HeaderValue::from_str(name).unwrap());
+            for version in versions {
+                headers.append(
+                    MCP_PROTOCOL_VERSION,
+                    HeaderValue::from_str(version).unwrap(),
+                );
+            }
+            let body = json!({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"classifyLiability","arguments":{"claim":{}},"_meta":{wire::VERSION_META:DEFAULT_PROTOCOL_VERSION,wire::CAPABILITIES_META:{}}}});
+            let response =
+                handle_mcp(headers, Bytes::from(serde_json::to_vec(&body).unwrap())).await;
+            assert_eq!(
+                response.status(),
+                if expected.is_some() {
+                    StatusCode::BAD_REQUEST
+                } else {
+                    StatusCode::OK
+                }
+            );
+            let value = response_json(response).await;
+            assert_eq!(value["error"]["code"].as_i64(), expected);
+        }
+    }
 
     fn sample_claim() -> Value {
         json!({
@@ -842,10 +953,115 @@ mod tests {
         assert_eq!(error.message, "missing required field `incidentDate`");
     }
 
+    async fn start_example() -> (String, tokio::task::JoinHandle<()>) {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let url = format!("http://{}/mcp", listener.local_addr().unwrap());
+        let task = tokio::spawn(async move {
+            axum::serve(listener, build_router()).await.unwrap();
+        });
+        (url, task)
+    }
+
     #[tokio::test]
-    async fn mcp_requires_session_after_initialize() {
-        let app = build_router();
-        let response = app
+    async fn real_client_calls_all_five_tools_across_two_replicas_and_gateway() {
+        let (first, first_task) = start_example().await;
+        let (second, second_task) = start_example().await;
+        let mut gateway_tools = Vec::new();
+        for (index, tool) in tool_definitions().into_iter().enumerate() {
+            let target = if index % 2 == 0 { &first } else { &second };
+            gateway_tools.push(json!({"name":tool["name"],"description":tool["description"],"inputSchema":tool["inputSchema"],
+                "apiType":"mcp","targetHost":target.trim_end_matches("/mcp"),"path":"/mcp","method":"POST",
+                "backendMcpProtocol":"stateless","backendCredentialMode":"anonymous","backendResource":target,
+                "sessionIndependent":true,"toolMetadata":{"runtime":{"allowPrivateTargetHost":true}}}));
+        }
+        let config=serde_json::from_value(json!({"enabled":true,"protocols":{"stateless":{"enabled":true}},"tools":gateway_tools})).unwrap();
+        let gateway = std::sync::Arc::new(light_pingora::McpRouterRuntime::new(config).unwrap());
+        let gateway_app = Router::new().route(
+            "/mcp",
+            post(move |headers: HeaderMap, body: Bytes| {
+                let gateway = gateway.clone();
+                async move {
+                    let request = light_pingora::McpHttpRequest {
+                        method: "POST".into(),
+                        path: "/mcp".into(),
+                        headers: headers
+                            .iter()
+                            .map(|(k, v)| (k.to_string(), v.to_str().unwrap().into()))
+                            .collect(),
+                        body: body.to_vec(),
+                    };
+                    let response = gateway
+                        .handle_request_with_context(
+                            request,
+                            light_pingora::McpRequestContext {
+                                anonymous_binding: Some("peer:127.0.0.1".into()),
+                                ..Default::default()
+                            },
+                        )
+                        .await
+                        .unwrap()
+                        .unwrap();
+                    let mut builder = axum::http::Response::builder()
+                        .status(response.status)
+                        .header("content-type", response.content_type);
+                    for (name, value) in &response.headers {
+                        builder = builder.header(name, value);
+                    }
+                    builder
+                        .body(Body::from(response.body.buffered().unwrap().to_vec()))
+                        .unwrap()
+                }
+            }),
+        );
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let gateway_url = format!("http://{}/mcp", listener.local_addr().unwrap());
+        let gateway_task = tokio::spawn(async move {
+            axum::serve(listener, gateway_app).await.unwrap();
+        });
+        let arguments = json!({"claim":sample_claim(),"policies":sample_policies(),"vehicle":{"covered":true},
+            "priorClaims":{"priorClaimCount":1,"recentClaimCount":0},"coverage":{"coverageStatus":"covered"},"liability":{},
+            "triage":{},"coverageReview":{},"documents":{},"settlement":{}});
+        for target in [&first, &second, &gateway_url] {
+            let client = mcp_client::McpGatewayClient::new(target).unwrap();
+            let tools = client.list_tools(None).await.unwrap();
+            assert_eq!(tools.len(), 5);
+            for tool in tools {
+                let allowed = tool.input_schema["properties"].as_object().unwrap();
+                let args = arguments
+                    .as_object()
+                    .unwrap()
+                    .iter()
+                    .filter(|(name, _)| allowed.contains_key(*name))
+                    .map(|(k, v)| (k.clone(), v.clone()))
+                    .collect::<serde_json::Map<_, _>>();
+                let result = client
+                    .call_tool(None, &tool.name, Value::Object(args))
+                    .await
+                    .unwrap();
+                assert!(!result.is_error, "{} on {}", tool.name, target);
+                assert_eq!(result.result_type.as_deref(), Some("complete"));
+                assert!(result.structured_content.unwrap().is_object());
+            }
+        }
+        // Fresh clients alternate ordinary requests without initialization or shared sessions.
+        for target in [&first, &second, &first, &second] {
+            let client = mcp_client::McpGatewayClient::new(target).unwrap();
+            assert!(
+                !client
+                    .call_tool(None, "listRequiredDocuments", json!({}))
+                    .await
+                    .unwrap()
+                    .is_error
+            );
+        }
+        first_task.abort();
+        second_task.abort();
+        gateway_task.abort();
+    }
+
+    #[tokio::test]
+    async fn stateless_rejects_missing_contract_and_never_creates_sessions() {
+        let response = build_router()
             .oneshot(
                 Request::builder()
                     .method("POST")
@@ -854,78 +1070,12 @@ mod tests {
                     .body(Body::from(
                         r#"{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}"#,
                     ))
-                    .expect("request"),
+                    .unwrap(),
             )
             .await
-            .expect("response");
-
-        assert_eq!(response.status(), StatusCode::OK);
-        let json = response_json(response).await;
-        assert_eq!(json["error"]["code"], -32602);
-        assert_eq!(json["error"]["message"], "missing Mcp-Session-Id");
-    }
-
-    #[tokio::test]
-    async fn initialize_returns_session_header() {
-        let app = build_router();
-        let response = app
-            .oneshot(
-                Request::builder()
-                    .method("POST")
-                    .uri("/mcp")
-                    .header("content-type", "application/json")
-                    .body(Body::from(
-                        r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"test","version":"1"}}}"#,
-                    ))
-                    .expect("request"),
-            )
-            .await
-            .expect("response");
-
-        assert_eq!(response.status(), StatusCode::OK);
-        assert!(response.headers().contains_key(MCP_SESSION_ID));
-    }
-
-    #[tokio::test]
-    async fn tools_list_accepts_initialized_session() {
-        let app = build_router();
-        let response = app
-            .clone()
-            .oneshot(
-                Request::builder()
-                    .method("POST")
-                    .uri("/mcp")
-                    .header("content-type", "application/json")
-                    .body(Body::from(
-                        r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"test","version":"1"}}}"#,
-                    ))
-                    .expect("request"),
-            )
-            .await
-            .expect("response");
-        let session_id = response
-            .headers()
-            .get(MCP_SESSION_ID)
-            .expect("session header")
-            .to_str()
-            .expect("session header string")
-            .to_string();
-
-        let response = app
-            .oneshot(
-                Request::builder()
-                    .method("POST")
-                    .uri("/mcp")
-                    .header("content-type", "application/json")
-                    .header("mcp-session-id", session_id)
-                    .body(Body::from(
-                        r#"{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}"#,
-                    ))
-                    .expect("request"),
-            )
-            .await
-            .expect("response");
-
-        assert_eq!(response.status(), StatusCode::OK);
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert!(!response.headers().contains_key(MCP_SESSION_ID));
+        assert_eq!(response_json(response).await["error"]["code"], -32020);
     }
 }
