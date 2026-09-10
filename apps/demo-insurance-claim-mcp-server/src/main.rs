@@ -974,7 +974,8 @@ mod tests {
                 "backendMcpProtocol":"stateless","backendCredentialMode":"anonymous","backendResource":target,
                 "sessionIndependent":true,"toolMetadata":{"runtime":{"allowPrivateTargetHost":true}}}));
         }
-        let config=serde_json::from_value(json!({"enabled":true,"protocols":{"stateless":{"enabled":true}},"tools":gateway_tools})).unwrap();
+        let config = serde_json::from_value(json!({"enabled":true,"tools":gateway_tools}))
+            .unwrap();
         let gateway = std::sync::Arc::new(light_pingora::McpRouterRuntime::new(config).unwrap());
         let gateway_app = Router::new().route(
             "/mcp",
