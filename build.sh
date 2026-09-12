@@ -16,6 +16,7 @@ REPO_ROOT="${SCRIPT_DIR}"
 WORKSPACE_ROOT="$(cd "${REPO_ROOT}/.." && pwd)"
 
 APPS=(
+  "demo-support-triage-agent:apps/demo-support-triage-agent:9010"
   "demo-customer-profile-api:apps/demo-customer-profile-api:8085"
   "demo-insurance-claim-mcp-server:apps/demo-insurance-claim-mcp-server:8087"
   "demo-offer-decision-api:apps/demo-offer-decision-api:8086"
@@ -38,6 +39,7 @@ show_help() {
   echo "          [--image-org ORG] overrides the Docker Hub namespace"
   echo " "
   echo "    apps:"
+  echo "          demo-support-triage-agent"
   echo "          demo-customer-profile-api"
   echo "          demo-insurance-claim-mcp-server"
   echo "          demo-offer-decision-api"

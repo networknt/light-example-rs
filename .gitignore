@@ -25,3 +25,7 @@ dist
 .claude/
 AGENTS.md
 CLAUDE.md
+
+# Local A2A demo configuration, secrets and task state
+**/.runtime/
+__pycache__/

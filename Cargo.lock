@@ -3,6 +3,39 @@
 version = 4
 
 [[package]]
+name = "a2a-backend"
+version = "0.2.1"
+dependencies = [
+ "async-trait",
+ "axum",
+ "base64",
+ "bytes",
+ "chrono",
+ "futures-util",
+ "hex",
+ "hmac 0.12.1",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "thiserror 2.0.18",
+ "tokio",
+ "url",
+ "uuid",
+]
+
+[[package]]
+name = "a2a-client"
+version = "0.2.1"
+dependencies = [
+ "http 1.4.0",
+ "reqwest",
+ "thiserror 2.0.18",
+ "tokio",
+ "url",
+]
+
+[[package]]
 name = "a2a-core"
 version = "0.2.1"
 dependencies = [
@@ -30,6 +63,19 @@ dependencies = [
  "sha2 0.10.9",
  "thiserror 2.0.18",
  "url",
+]
+
+[[package]]
+name = "a2a-store"
+version = "0.2.1"
+dependencies = [
+ "a2a-core",
+ "chrono",
+ "operational-store",
+ "serde_json",
+ "sqlx",
+ "thiserror 2.0.18",
+ "uuid",
 ]
 
 [[package]]
@@ -251,6 +297,18 @@ name = "arrayvec"
 version = "0.7.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d3fb67a6e08acf24fdeccbac2cb6ac4305825bd1f117462e0e6f2f193345ad56"
+
+[[package]]
+name = "artifact-store"
+version = "0.2.1"
+dependencies = [
+ "chrono",
+ "serde",
+ "sha2 0.10.9",
+ "sqlx",
+ "thiserror 2.0.18",
+ "uuid",
+]
 
 [[package]]
 name = "asn1-rs"
@@ -1306,6 +1364,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "config-embed-build"
+version = "0.2.1"
+
+[[package]]
 name = "config-loader"
 version = "0.2.1"
 dependencies = [
@@ -1583,6 +1645,25 @@ dependencies = [
  "tokio",
  "tower",
  "tracing",
+]
+
+[[package]]
+name = "demo-support-triage-agent"
+version = "0.1.0"
+dependencies = [
+ "a2a-backend",
+ "a2a-core",
+ "anyhow",
+ "async-trait",
+ "axum",
+ "chrono",
+ "light-a2a",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]
@@ -2744,6 +2825,41 @@ dependencies = [
 ]
 
 [[package]]
+name = "light-a2a"
+version = "0.2.1"
+dependencies = [
+ "a2a-backend",
+ "a2a-client",
+ "a2a-core",
+ "a2a-protocol",
+ "a2a-store",
+ "anyhow",
+ "arc-swap",
+ "artifact-store",
+ "async-trait",
+ "axum",
+ "base64",
+ "chrono",
+ "config-embed-build",
+ "config-loader",
+ "futures-util",
+ "hmac 0.12.1",
+ "jsonschema",
+ "light-axum",
+ "light-runtime",
+ "operational-store",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "sqlx",
+ "tokio",
+ "tracing",
+ "url",
+ "uuid",
+]
+
+[[package]]
 name = "light-axum"
 version = "0.2.1"
 dependencies = [
@@ -2880,6 +2996,12 @@ dependencies = [
  "tracing",
  "url",
 ]
+
+[[package]]
+name = "linux-raw-sys"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32a66949e030da00e8c7d4434b251670a91556f4144941d37452769c25d58a53"
 
 [[package]]
 name = "litemap"
@@ -3349,6 +3471,18 @@ name = "openssl-probe"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c87def4c32ab89d880effc9e097653c8da5d6ef28e6b539d313baaacfbafcbe"
+
+[[package]]
+name = "operational-store"
+version = "0.2.1"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "sqlx",
+ "thiserror 2.0.18",
+ "uuid",
+]
 
 [[package]]
 name = "option-ext"
@@ -4353,6 +4487,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustix"
+version = "1.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b6fe4565b9518b83ef4f91bb47ce29620ca828bd32cb7e408f0062e9930ba190"
+dependencies = [
+ "bitflags 2.11.1",
+ "errno",
+ "libc",
+ "linux-raw-sys",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "rustls"
 version = "0.21.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5113,6 +5260,19 @@ name = "tagptr"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7b2093cf4c8eb1e67749a6762251bc9cd836b6fc171623bd0a9d324d37af2417"
+
+[[package]]
+name = "tempfile"
+version = "3.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
+dependencies = [
+ "fastrand",
+ "getrandom 0.4.2",
+ "once_cell",
+ "rustix",
+ "windows-sys 0.61.2",
+]
 
 [[package]]
 name = "thiserror"

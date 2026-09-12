@@ -197,3 +197,10 @@ config/demo-offer-decision-api/
 ```
 
 See the [insurance MCP migration and publication guide](apps/demo-insurance-claim-mcp-server/README.md) for required modern client and backend settings.
+
+## A2A support-triage example
+
+[Support triage agent](apps/demo-support-triage-agent/README.md) implements the
+private `light-a2a-backend/v1` contract. It includes a deterministic Rust backend,
+real HTTP security/restart tests, an isolated Docker smoke, and a sidecar Compose
+pair for a Portal-published external agent.

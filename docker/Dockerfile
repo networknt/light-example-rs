@@ -29,7 +29,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends ca-certificates curl && \
     groupadd --system app && \
     useradd --system --gid app --home-dir /app --shell /usr/sbin/nologin app && \
-    mkdir -p /app/config /app/config-cache && \
+    mkdir -p /app/config /app/config-cache /app/state && \
     chown -R app:app /app && \
     rm -rf /var/lib/apt/lists/*
 

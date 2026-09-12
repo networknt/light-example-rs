@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "apps/demo-support-triage-agent",
     "apps/demo-customer-profile-api",
     "apps/demo-insurance-claim-mcp-server",
     "apps/demo-offer-decision-api",

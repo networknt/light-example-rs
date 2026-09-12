@@ -1,0 +1,70 @@
+# Standalone pair on an existing Light Portal network. A stable infrastructure
+# container owns the namespace across independent backend/sidecar restarts.
+services:
+  triage-network:
+    image: ${TRIAGE_IMAGE:?select the built demo-support-triage-agent image}
+    user: "999:999"
+    entrypoint: ["/bin/sleep", "infinity"]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    networks:
+      portal:
+        aliases: [support-triage-a2a]
+    ports:
+      - "127.0.0.1:${TRIAGE_A2A_PORT:-8458}:8448"
+    restart: unless-stopped
+
+  support-triage-backend:
+    image: ${TRIAGE_IMAGE:?select the built demo-support-triage-agent image}
+    user: "999:999"
+    environment:
+      TRIAGE_CONFIG: /app/config/backend.json
+    volumes:
+      - ${TRIAGE_BACKEND_CONFIG:?absolute path to generated backend.json}:/app/config/backend.json:ro
+      - ${TRIAGE_SECRETS_DIR:?absolute path to protected secrets}/triage-context-key:/run/secrets/triage-context-key:ro
+      - triage-state:/app/state
+    network_mode: service:triage-network
+    depends_on:
+      triage-network:
+        condition: service_started
+        restart: true
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9010/health/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+    stop_grace_period: 10s
+  light-a2a:
+    image: ${LIGHT_A2A_IMAGE:?select a built light-a2a image}
+    network_mode: service:triage-network
+    depends_on:
+      triage-network:
+        condition: service_started
+        restart: true
+      support-triage-backend:
+        condition: service_healthy
+        restart: true
+    environment:
+      LIGHT_RS_CONFIG_DIR: /config
+      LIGHT_PORTAL_AUTHORIZATION: ${TRIAGE_LIGHT_PORTAL_AUTHORIZATION:?issue a credential for the runtime instance}
+    volumes:
+      - ${TRIAGE_A2A_CONFIG_DIR:?absolute path to runtime bootstrap config}:/config:ro
+      - ${TRIAGE_SECRETS_DIR:?absolute path to protected secrets}:/run/secrets:ro
+      - ${TRIAGE_CA_FILE:?absolute path to Config Server CA}:/keystore/ca.pem:ro
+      - triage-artifacts:/var/lib/light-a2a/artifacts
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8448/_a2a/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+    stop_grace_period: 35s
+volumes:
+  triage-state:
+  triage-artifacts:
+networks:
+  portal:
+    external: true
+    name: ${TRIAGE_PORTAL_NETWORK:?select the existing Portal network}

@@ -16,3 +16,5 @@ light-fabric/.gitnexus
 light-fabric/target
 light-fabric/docs/book
 light-fabric/apps/*/config-cache
+
+light-example-rs/**/.runtime
