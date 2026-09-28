@@ -72,21 +72,18 @@ struct JsonRpcError {
 
 #[derive(Debug)]
 struct McpError {
-    code: i32,
     message: String,
 }
 
 impl McpError {
     fn invalid_params(message: impl Into<String>) -> Self {
         Self {
-            code: -32602,
             message: message.into(),
         }
     }
 
     fn tool_not_found(name: &str) -> Self {
         Self {
-            code: -32602,
             message: format!("tool `{name}` not found"),
         }
     }
@@ -949,7 +946,6 @@ mod tests {
         }))
         .expect_err("missing incident date should fail");
 
-        assert_eq!(error.code, -32602);
         assert_eq!(error.message, "missing required field `incidentDate`");
     }
 
