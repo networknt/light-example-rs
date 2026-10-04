@@ -2977,8 +2977,6 @@ dependencies = [
  "anyhow",
  "async-trait",
  "base64",
- "jsonwebtoken",
- "oauth-workflow-contract",
  "reqwest",
  "rustls-pemfile",
  "serde",
