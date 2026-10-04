@@ -1,8 +1,7 @@
 # syntax=docker/dockerfile:1
 FROM rust:1.98.0-bookworm AS builder
 
-ARG APP_NAME
-ARG APP_DIR
+ARG CARGO_CACHE_ID=warm
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends musl-tools pkg-config && \
@@ -16,7 +15,15 @@ COPY light-example-rs/ light-example-rs/
 
 WORKDIR /usr/src/light-example-rs
 
-RUN cargo build --locked --release --target x86_64-unknown-linux-musl --bin "${APP_NAME}" && \
+ARG APP_NAME
+ARG APP_DIR
+
+# Share dependencies and incremental artifacts across the four app builds.
+# Copy outputs outside the cache mount before the runtime stage reads them.
+RUN --mount=type=cache,id=light-fabric-rust198-registry-${CARGO_CACHE_ID},target=/usr/local/cargo/registry,sharing=locked \
+    --mount=type=cache,id=light-fabric-rust198-git-${CARGO_CACHE_ID},target=/usr/local/cargo/git,sharing=locked \
+    --mount=type=cache,id=light-example-rs-rust198-target-${CARGO_CACHE_ID}-musl,target=/usr/src/light-example-rs/target,sharing=locked \
+    cargo build --locked --release --target x86_64-unknown-linux-musl --bin "${APP_NAME}" && \
     cp "target/x86_64-unknown-linux-musl/release/${APP_NAME}" /tmp/service && \
     mkdir -p /tmp/config && \
     cp -R "${APP_DIR}/config/." /tmp/config/

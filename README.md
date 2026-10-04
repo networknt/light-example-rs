@@ -161,6 +161,19 @@ Use `DOCKER_ORG` or `--image-org` to publish under another namespace. Use
 `--app demo-customer-profile-api`, `--app demo-insurance-claim-mcp-server`, or
 `--app demo-offer-decision-api` to build one image.
 
+BuildKit shares Cargo registry, Git dependency and musl release artifact caches
+across the four apps. The first build populates the caches; subsequent apps and
+rebuilds reuse compatible compilation artifacts. `--no-cache` also uses fresh
+Cargo caches and cleans up only that invocation's cold caches afterward.
+
+Use `./build.sh 0.1.0 --changed --local` to build only apps affected by staged,
+unstaged or untracked files in this repository or sibling `light-fabric`.
+Selection follows Cargo's musl dependency graph; shared build inputs select all
+apps, while documentation-only changes select none. This flag considers
+uncommitted changes, not changes since the last image build. It can be combined
+with `--app` to restrict the candidate set. `--skip-latest` omits latest tags.
+All selected builds must succeed before any images are published.
+
 The Docker build context is the parent workspace directory because this repo
 uses local path dependencies from `../light-fabric`.
 
