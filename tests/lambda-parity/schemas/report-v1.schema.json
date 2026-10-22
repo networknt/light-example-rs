@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema", "selected", "total", "green", "fullParity", "counts", "rows", "evidenceSha256"],
+  "properties": {
+    "schema": {"const": "lambda-parity-report/v1"},
+    "selected": {"type": "integer", "minimum": 1},
+    "total": {"type": "integer", "minimum": 1},
+    "green": {"type": "boolean"},
+    "fullParity": {"const": false},
+    "counts": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+    "rows": {"type": "array", "items": {
+      "type": "object", "required": ["id", "selected", "outcome"],
+      "properties": {
+        "id": {"type": "string"}, "selected": {"type": "boolean"},
+        "outcome": {"enum": ["equivalent-pass", "intentional-difference-pass", "fail", "blocked", "unavailable", "deferred", "not-selected", "inconclusive-evidence"]}
+      }
+    }},
+    "evidenceSha256": {"type": "object", "additionalProperties": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+  }
+}

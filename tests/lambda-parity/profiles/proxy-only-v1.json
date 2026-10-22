@@ -1,0 +1,13 @@
+{
+  "schema": "lambda-parity-profile/v1",
+  "id": "proxy-only-application-authentication-disabled-v1",
+  "handlers": ["proxy"],
+  "ingress": "multi-value ALB-shaped synthetic direct Invoke; not ALB qualification",
+  "authentication": "application disabled; local only; AWS Invoke would still require IAM",
+  "differences": [{
+    "field": "backendCalls",
+    "reference": "serverless-conformance/LEDGER.md E-03/E-04/E-10/E-12/E-13 and E-03-response-off-0-multi-v1",
+    "rationale": "Java omits absent business fields and stage; Rust retains null fields and configured stage. E-04 preserves encoded query in Java and decodes percent once in Rust, retaining literal plus and order. Full raw calls are preserved; per-side named fields asserted. Existing comparator rejects undeclared or stale differences."
+  }],
+  "excluded": ["Validator activation", "Router rewriting", "JWT authentication", "pet-store AWS baseline", "AWS execution accounting", "timing", "RIE packaging"]
+}

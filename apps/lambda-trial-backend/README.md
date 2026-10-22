@@ -1,5 +1,10 @@
 # Rust Lambda trial backend
 
+The additive [parity suite](../../tests/lambda-parity/README.md) adds the finite
+`parity-modes/v1` control-header contract alongside the original body-command
+contract below. Set deployment-owned `PARITY_BACKEND_IDENTITY=echo-a` or `echo-b`.
+This source change does not update the previously deployed trial described below.
+
 Dedicated, nonpersistent business Lambda for Light Lambda qualification. It does
 not replace the Java pet-store functions. No database, credentials, outbound
 dependencies, public endpoint or request authentication implementation. AWS IAM

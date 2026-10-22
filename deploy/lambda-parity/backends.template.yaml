@@ -1,0 +1,270 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "REVIEW ONLY: isolated parity echo A/B backends; no gateway, ingress, denied or delay target.",
+  "Parameters": {
+    "TrialPrefix": {
+      "Type": "String",
+      "AllowedPattern": "parity-[a-z0-9-]{1,30}"
+    },
+    "ArtifactBucket": {
+      "Type": "String"
+    },
+    "BackendKey": {
+      "Type": "String"
+    },
+    "BackendObjectVersion": {
+      "Type": "String"
+    },
+    "BackendCodeSha256": {
+      "Type": "String"
+    }
+  },
+  "Resources": {
+    "EchoALogs": {
+      "Type": "AWS::Logs::LogGroup",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Sub": "/aws/lambda/${TrialPrefix}-echo-a"
+        },
+        "RetentionInDays": 3
+      }
+    },
+    "EchoARole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "TrialOwnResources",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "EchoALogs",
+                      "Arn"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "EchoA": {
+      "Type": "AWS::Lambda::Function",
+      "DependsOn": [
+        "EchoALogs"
+      ],
+      "Properties": {
+        "FunctionName": {
+          "Fn::Sub": "${TrialPrefix}-echo-a"
+        },
+        "Runtime": "provided.al2023",
+        "Handler": "bootstrap",
+        "Architectures": [
+          "x86_64"
+        ],
+        "MemorySize": 128,
+        "Timeout": 5,
+        "Role": {
+          "Fn::GetAtt": [
+            "EchoARole",
+            "Arn"
+          ]
+        },
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ArtifactBucket"
+          },
+          "S3Key": {
+            "Ref": "BackendKey"
+          },
+          "S3ObjectVersion": {
+            "Ref": "BackendObjectVersion"
+          }
+        },
+        "Environment": {
+          "Variables": {
+            "PARITY_BACKEND_IDENTITY": "echo-a"
+          }
+        },
+        "Tags": [
+          {
+            "Key": "purpose",
+            "Value": "lambda-parity-trial"
+          },
+          {
+            "Key": "owner",
+            "Value": {
+              "Ref": "TrialPrefix"
+            }
+          }
+        ]
+      }
+    },
+    "EchoAVersion": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "EchoA"
+        },
+        "CodeSha256": {
+          "Ref": "BackendCodeSha256"
+        },
+        "Description": "Parity trial immutable version; use a fresh stack for each batch"
+      }
+    },
+    "EchoBLogs": {
+      "Type": "AWS::Logs::LogGroup",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Sub": "/aws/lambda/${TrialPrefix}-echo-b"
+        },
+        "RetentionInDays": 3
+      }
+    },
+    "EchoBRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "TrialOwnResources",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "EchoBLogs",
+                      "Arn"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "EchoB": {
+      "Type": "AWS::Lambda::Function",
+      "DependsOn": [
+        "EchoBLogs"
+      ],
+      "Properties": {
+        "FunctionName": {
+          "Fn::Sub": "${TrialPrefix}-echo-b"
+        },
+        "Runtime": "provided.al2023",
+        "Handler": "bootstrap",
+        "Architectures": [
+          "x86_64"
+        ],
+        "MemorySize": 128,
+        "Timeout": 5,
+        "Role": {
+          "Fn::GetAtt": [
+            "EchoBRole",
+            "Arn"
+          ]
+        },
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ArtifactBucket"
+          },
+          "S3Key": {
+            "Ref": "BackendKey"
+          },
+          "S3ObjectVersion": {
+            "Ref": "BackendObjectVersion"
+          }
+        },
+        "Environment": {
+          "Variables": {
+            "PARITY_BACKEND_IDENTITY": "echo-b"
+          }
+        },
+        "Tags": [
+          {
+            "Key": "purpose",
+            "Value": "lambda-parity-trial"
+          },
+          {
+            "Key": "owner",
+            "Value": {
+              "Ref": "TrialPrefix"
+            }
+          }
+        ]
+      }
+    },
+    "EchoBVersion": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "EchoB"
+        },
+        "CodeSha256": {
+          "Ref": "BackendCodeSha256"
+        },
+        "Description": "Parity trial immutable version; use a fresh stack for each batch"
+      }
+    }
+  },
+  "Outputs": {
+    "EchoAQualifiedArn": {
+      "Value": {
+        "Ref": "EchoAVersion"
+      }
+    },
+    "EchoBQualifiedArn": {
+      "Value": {
+        "Ref": "EchoBVersion"
+      }
+    }
+  }
+}
