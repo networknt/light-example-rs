@@ -2,6 +2,8 @@ use lambda_runtime::{Error, LambdaEvent, service_fn};
 use serde::Deserialize;
 use serde_json::{Value, json};
 
+mod parity;
+
 const MAX_BODY_BYTES: usize = 1024;
 
 #[derive(Deserialize)]
@@ -62,6 +64,9 @@ fn command(event: &Value) -> Option<Command> {
 }
 
 async fn handle(event: LambdaEvent<Value>) -> Result<Value, Error> {
+    if parity::selected(&event.payload) {
+        return parity::handle(&event.payload, &event.context.request_id).await;
+    }
     let Some(cmd) = command(&event.payload) else {
         // Never log input, headers, tokens, malformed values or error payloads.
         eprintln!(

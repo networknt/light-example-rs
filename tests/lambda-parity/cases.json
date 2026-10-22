@@ -1,0 +1,306 @@
+[
+  {
+    "id": "PARITY-created",
+    "family": "responses",
+    "availability": "local",
+    "reason": "PARITY created",
+    "requiredCapabilities": [
+      "proxy",
+      "multi-value-ingress"
+    ],
+    "requests": [
+      {
+        "mode": "created"
+      }
+    ]
+  },
+  {
+    "id": "PARITY-no-content",
+    "family": "responses",
+    "availability": "local",
+    "reason": "PARITY no content",
+    "requiredCapabilities": [
+      "proxy",
+      "multi-value-ingress"
+    ],
+    "requests": [
+      {
+        "mode": "no-content"
+      }
+    ]
+  },
+  {
+    "id": "PARITY-empty",
+    "family": "responses",
+    "availability": "local",
+    "reason": "PARITY empty",
+    "requiredCapabilities": [
+      "proxy",
+      "multi-value-ingress"
+    ],
+    "requests": [
+      {
+        "mode": "empty"
+      }
+    ]
+  },
+  {
+    "id": "PARITY-application-error",
+    "family": "responses",
+    "availability": "local",
+    "reason": "PARITY application error",
+    "requiredCapabilities": [
+      "proxy",
+      "multi-value-ingress"
+    ],
+    "requests": [
+      {
+        "mode": "application-error"
+      }
+    ]
+  },
+  {
+    "id": "PARITY-body-absent",
+    "family": "body",
+    "availability": "local",
+    "reason": "PARITY body absent",
+    "requiredCapabilities": [
+      "proxy",
+      "multi-value-ingress"
+    ],
+    "requests": [
+      {
+        "mode": "empty"
+      }
+    ]
+  },
+  {
+    "id": "PARITY-body-null",
+    "family": "body",
+    "availability": "local",
+    "reason": "PARITY body null",
+    "requiredCapabilities": [
+      "proxy",
+      "multi-value-ingress"
+    ],
+    "requests": [
+      {
+        "mode": "empty",
+        "body": null
+      }
+    ]
+  },
+  {
+    "id": "PARITY-body-empty",
+    "family": "body",
+    "availability": "local",
+    "reason": "PARITY body empty",
+    "requiredCapabilities": [
+      "proxy",
+      "multi-value-ingress"
+    ],
+    "requests": [
+      {
+        "mode": "empty",
+        "body": ""
+      }
+    ]
+  },
+  {
+    "id": "PARITY-body-json",
+    "family": "body",
+    "availability": "local",
+    "reason": "PARITY body json",
+    "requiredCapabilities": [
+      "proxy",
+      "multi-value-ingress"
+    ],
+    "requests": [
+      {
+        "mode": "empty",
+        "body": "{\"n\":9007199254740993}"
+      }
+    ]
+  },
+  {
+    "id": "PARITY-body-unicode",
+    "family": "body",
+    "availability": "local",
+    "reason": "PARITY body unicode",
+    "requiredCapabilities": [
+      "proxy",
+      "multi-value-ingress"
+    ],
+    "requests": [
+      {
+        "mode": "empty",
+        "body": "雪 café"
+      }
+    ]
+  },
+  {
+    "id": "PARITY-forwarding",
+    "family": "forwarding",
+    "availability": "local",
+    "reason": "PARITY forwarding",
+    "requiredCapabilities": [
+      "proxy",
+      "multi-value-ingress"
+    ],
+    "requests": [
+      {
+        "mode": "empty",
+        "body": "synthetic",
+        "headers": {
+          "x-synthetic": [
+            "first",
+            "second"
+          ]
+        },
+        "query": {
+          "q": [
+            "a+b",
+            "%2B",
+            "雪",
+            ""
+          ],
+          "empty": [
+            ""
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "PARITY-routing-ab-recovery",
+    "family": "recovery",
+    "availability": "local",
+    "reason": "PARITY routing ab recovery",
+    "requiredCapabilities": [
+      "proxy",
+      "multi-value-ingress"
+    ],
+    "requests": [
+      {
+        "mode": "created",
+        "path": "/parity/a"
+      },
+      {
+        "mode": "application-error",
+        "path": "/parity/b"
+      },
+      {
+        "mode": "created",
+        "path": "/parity/a"
+      }
+    ]
+  },
+  {
+    "id": "PARITY-pet-store",
+    "family": "routing",
+    "availability": "deferred",
+    "reason": "Independent deployed four-route Java pet-store baseline; never included in synthetic totals",
+    "requiredCapabilities": [
+      "pet-store"
+    ]
+  },
+  {
+    "id": "PARITY-echo-dynamic",
+    "family": "forwarding",
+    "availability": "deferred",
+    "reason": "Backend echo is directly tested; dynamic gateway callback adapter is not in existing fixture-v1 stubs",
+    "requiredCapabilities": [
+      "echo-dynamic"
+    ]
+  },
+  {
+    "id": "PARITY-function-error",
+    "family": "backend-failure",
+    "availability": "deferred",
+    "reason": "Backend Runtime API error tested directly; gateway mapping requires separately reviewed per-side expectations",
+    "requiredCapabilities": [
+      "function-error"
+    ]
+  },
+  {
+    "id": "PARITY-invalid-envelopes",
+    "family": "backend-failure",
+    "availability": "deferred",
+    "reason": "Finite backend modes implemented; gateway-specific malformed payload expectations pending review",
+    "requiredCapabilities": [
+      "invalid-envelopes"
+    ]
+  },
+  {
+    "id": "PARITY-binary-cookies",
+    "family": "responses",
+    "availability": "deferred",
+    "reason": "Backend modes directly tested; native response adaptation needs independent per-side expectations",
+    "requiredCapabilities": [
+      "binary-cookies"
+    ]
+  },
+  {
+    "id": "PARITY-unknown-template-route",
+    "family": "routing",
+    "availability": "deferred",
+    "reason": "Literal A/B covered; route admission/template profile requires a separate case batch",
+    "requiredCapabilities": [
+      "unknown-template-route"
+    ]
+  },
+  {
+    "id": "PARITY-middleware-composition",
+    "family": "middleware",
+    "availability": "deferred",
+    "reason": "JWT and full-chain profiles require explicit equivalent credential/configuration contracts",
+    "requiredCapabilities": [
+      "middleware-composition"
+    ]
+  },
+  {
+    "id": "PARITY-iam-denied",
+    "family": "aws-dispatch",
+    "availability": "deferred",
+    "reason": "Requires valid denied qualified target and separately authorized AWS execution",
+    "requiredCapabilities": [
+      "iam-denied"
+    ]
+  },
+  {
+    "id": "PARITY-timing",
+    "family": "timing",
+    "availability": "deferred",
+    "reason": "Delay target and clock boundaries require separate reviewed batch",
+    "requiredCapabilities": [
+      "timing"
+    ]
+  },
+  {
+    "id": "PARITY-validator",
+    "family": "capability",
+    "availability": "unavailable",
+    "reason": "Application activation closed; no worker experiments resumed",
+    "requiredCapabilities": [
+      "validator"
+    ]
+  },
+  {
+    "id": "PARITY-router-rewrite",
+    "family": "capability",
+    "availability": "unavailable",
+    "reason": "Rewrite execution unavailable; forwarding-only profile is distinct",
+    "requiredCapabilities": [
+      "router-rewrite"
+    ]
+  },
+  {
+    "id": "PARITY-invalid-outer",
+    "family": "backend-failure",
+    "availability": "unavailable",
+    "reason": "lambda_runtime serializes JSON; returning a JSON string is not invalid outer bytes",
+    "requiredCapabilities": [
+      "invalid-outer"
+    ]
+  }
+]

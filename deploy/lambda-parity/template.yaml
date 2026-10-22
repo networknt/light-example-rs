@@ -1,0 +1,339 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "REVIEW ONLY: isolated direct-Invoke parity trial. No ingress, denied or delay targets.",
+  "Parameters": {
+    "TrialPrefix": {
+      "Type": "String",
+      "AllowedPattern": "parity-[a-z0-9-]{1,30}"
+    },
+    "ArtifactBucket": {
+      "Type": "String"
+    },
+    "JavaKey": {
+      "Type": "String"
+    },
+    "JavaObjectVersion": {
+      "Type": "String"
+    },
+    "JavaCodeSha256": {
+      "Type": "String"
+    },
+    "RustKey": {
+      "Type": "String"
+    },
+    "RustObjectVersion": {
+      "Type": "String"
+    },
+    "RustCodeSha256": {
+      "Type": "String"
+    },
+    "JavaConfigLayerArn": {
+      "Type": "String",
+      "AllowedPattern": "arn:aws:lambda:[a-z0-9-]+:[0-9]{12}:layer:parity-[^:]+:[0-9]+"
+    },
+    "RustConfigLayerArn": {
+      "Type": "String",
+      "AllowedPattern": "arn:aws:lambda:[a-z0-9-]+:[0-9]{12}:layer:parity-[^:]+:[0-9]+"
+    },
+    "EchoAQualifiedArn": {
+      "Type": "String",
+      "AllowedPattern": "arn:aws:lambda:[a-z0-9-]+:[0-9]{12}:function:parity-[a-z0-9-]+:[0-9]+"
+    },
+    "EchoBQualifiedArn": {
+      "Type": "String",
+      "AllowedPattern": "arn:aws:lambda:[a-z0-9-]+:[0-9]{12}:function:parity-[a-z0-9-]+:[0-9]+"
+    }
+  },
+  "Resources": {
+    "JavaLogs": {
+      "Type": "AWS::Logs::LogGroup",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Sub": "/aws/lambda/${TrialPrefix}-java-gateway"
+        },
+        "RetentionInDays": 3
+      }
+    },
+    "JavaRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "TrialOwnResources",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "JavaLogs",
+                      "Arn"
+                    ]
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "lambda:InvokeFunction"
+                  ],
+                  "Resource": [
+                    {
+                      "Ref": "EchoAQualifiedArn"
+                    },
+                    {
+                      "Ref": "EchoBQualifiedArn"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "Java": {
+      "Type": "AWS::Lambda::Function",
+      "DependsOn": [
+        "JavaLogs"
+      ],
+      "Properties": {
+        "FunctionName": {
+          "Fn::Sub": "${TrialPrefix}-java-gateway"
+        },
+        "Runtime": "provided.al2023",
+        "Handler": "bootstrap",
+        "Architectures": [
+          "x86_64"
+        ],
+        "MemorySize": 256,
+        "Timeout": 10,
+        "Role": {
+          "Fn::GetAtt": [
+            "JavaRole",
+            "Arn"
+          ]
+        },
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ArtifactBucket"
+          },
+          "S3Key": {
+            "Ref": "JavaKey"
+          },
+          "S3ObjectVersion": {
+            "Ref": "JavaObjectVersion"
+          }
+        },
+        "Environment": {
+          "Variables": {
+            "LIGHT_LAMBDA_CONFIG_DIR": "/opt",
+            "LIGHT_LAMBDA_GATEWAY_ARN": {
+              "Fn::Sub": "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${TrialPrefix}-java-gateway"
+            }
+          }
+        },
+        "Tags": [
+          {
+            "Key": "purpose",
+            "Value": "lambda-parity-trial"
+          },
+          {
+            "Key": "owner",
+            "Value": {
+              "Ref": "TrialPrefix"
+            }
+          }
+        ],
+        "Layers": [
+          {
+            "Ref": "JavaConfigLayerArn"
+          }
+        ]
+      }
+    },
+    "JavaVersion": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "Java"
+        },
+        "CodeSha256": {
+          "Ref": "JavaCodeSha256"
+        },
+        "Description": "Parity trial immutable version; use a fresh stack for each batch"
+      }
+    },
+    "RustLogs": {
+      "Type": "AWS::Logs::LogGroup",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Sub": "/aws/lambda/${TrialPrefix}-rust-gateway"
+        },
+        "RetentionInDays": 3
+      }
+    },
+    "RustRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "TrialOwnResources",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "RustLogs",
+                      "Arn"
+                    ]
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "lambda:InvokeFunction"
+                  ],
+                  "Resource": [
+                    {
+                      "Ref": "EchoAQualifiedArn"
+                    },
+                    {
+                      "Ref": "EchoBQualifiedArn"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "Rust": {
+      "Type": "AWS::Lambda::Function",
+      "DependsOn": [
+        "RustLogs"
+      ],
+      "Properties": {
+        "FunctionName": {
+          "Fn::Sub": "${TrialPrefix}-rust-gateway"
+        },
+        "Runtime": "provided.al2023",
+        "Handler": "bootstrap",
+        "Architectures": [
+          "x86_64"
+        ],
+        "MemorySize": 256,
+        "Timeout": 10,
+        "Role": {
+          "Fn::GetAtt": [
+            "RustRole",
+            "Arn"
+          ]
+        },
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ArtifactBucket"
+          },
+          "S3Key": {
+            "Ref": "RustKey"
+          },
+          "S3ObjectVersion": {
+            "Ref": "RustObjectVersion"
+          }
+        },
+        "Environment": {
+          "Variables": {
+            "LIGHT_LAMBDA_CONFIG_DIR": "/opt",
+            "LIGHT_LAMBDA_GATEWAY_ARN": {
+              "Fn::Sub": "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${TrialPrefix}-rust-gateway"
+            }
+          }
+        },
+        "Tags": [
+          {
+            "Key": "purpose",
+            "Value": "lambda-parity-trial"
+          },
+          {
+            "Key": "owner",
+            "Value": {
+              "Ref": "TrialPrefix"
+            }
+          }
+        ],
+        "Layers": [
+          {
+            "Ref": "RustConfigLayerArn"
+          }
+        ]
+      }
+    },
+    "RustVersion": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "Rust"
+        },
+        "CodeSha256": {
+          "Ref": "RustCodeSha256"
+        },
+        "Description": "Parity trial immutable version; use a fresh stack for each batch"
+      }
+    }
+  },
+  "Outputs": {
+    "JavaQualifiedArn": {
+      "Value": {
+        "Ref": "JavaVersion"
+      }
+    },
+    "RustQualifiedArn": {
+      "Value": {
+        "Ref": "RustVersion"
+      }
+    }
+  }
+}

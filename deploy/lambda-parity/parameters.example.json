@@ -1,0 +1,74 @@
+{
+  "backends": [
+    {
+      "ParameterKey": "TrialPrefix",
+      "ParameterValue": "REPLACE_FOR_REVIEW"
+    },
+    {
+      "ParameterKey": "ArtifactBucket",
+      "ParameterValue": "REPLACE_FOR_REVIEW"
+    },
+    {
+      "ParameterKey": "BackendKey",
+      "ParameterValue": "REPLACE_FOR_REVIEW"
+    },
+    {
+      "ParameterKey": "BackendObjectVersion",
+      "ParameterValue": "REPLACE_FOR_REVIEW"
+    },
+    {
+      "ParameterKey": "BackendCodeSha256",
+      "ParameterValue": "REPLACE_FOR_REVIEW"
+    }
+  ],
+  "gateways": [
+    {
+      "ParameterKey": "TrialPrefix",
+      "ParameterValue": "REPLACE_FOR_REVIEW"
+    },
+    {
+      "ParameterKey": "ArtifactBucket",
+      "ParameterValue": "REPLACE_FOR_REVIEW"
+    },
+    {
+      "ParameterKey": "JavaKey",
+      "ParameterValue": "REPLACE_FOR_REVIEW"
+    },
+    {
+      "ParameterKey": "JavaObjectVersion",
+      "ParameterValue": "REPLACE_FOR_REVIEW"
+    },
+    {
+      "ParameterKey": "JavaCodeSha256",
+      "ParameterValue": "REPLACE_FOR_REVIEW"
+    },
+    {
+      "ParameterKey": "RustKey",
+      "ParameterValue": "REPLACE_FOR_REVIEW"
+    },
+    {
+      "ParameterKey": "RustObjectVersion",
+      "ParameterValue": "REPLACE_FOR_REVIEW"
+    },
+    {
+      "ParameterKey": "RustCodeSha256",
+      "ParameterValue": "REPLACE_FOR_REVIEW"
+    },
+    {
+      "ParameterKey": "JavaConfigLayerArn",
+      "ParameterValue": "REPLACE_FOR_REVIEW"
+    },
+    {
+      "ParameterKey": "RustConfigLayerArn",
+      "ParameterValue": "REPLACE_FOR_REVIEW"
+    },
+    {
+      "ParameterKey": "EchoAQualifiedArn",
+      "ParameterValue": "REPLACE_FOR_REVIEW"
+    },
+    {
+      "ParameterKey": "EchoBQualifiedArn",
+      "ParameterValue": "REPLACE_FOR_REVIEW"
+    }
+  ]
+}

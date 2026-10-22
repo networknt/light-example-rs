@@ -11,6 +11,10 @@ dependencies and leaves the Java pet-store functions unchanged. The guide
 includes local executable tests, bootstrap ZIP packaging and separate AWS
 qualification requirements.
 
+[Lambda gateway parity](tests/lambda-parity/README.md) provides an offline-first
+case inventory, paired fixture generation, existing Java/Rust conformance runner
+orchestration, backend Runtime API contracts and isolated AWS review templates.
+
 ## Demo Workflow Orchestration APIs
 
 This repository contains three small `light-axum` services for the skill and
