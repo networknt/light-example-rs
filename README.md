@@ -2,6 +2,15 @@
 
 Rust example applications for Light-Fabric.
 
+## Lambda trial backend
+
+[lambda-trial-backend](apps/lambda-trial-backend/README.md) is a dedicated Rust
+business Lambda for testing Light Lambda success, application errors,
+FunctionError handling and warm recovery. It has no storage or outbound
+dependencies and leaves the Java pet-store functions unchanged. The guide
+includes local executable tests, bootstrap ZIP packaging and separate AWS
+qualification requirements.
+
 ## Demo Workflow Orchestration APIs
 
 This repository contains three small `light-axum` services for the skill and
