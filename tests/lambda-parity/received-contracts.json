@@ -1,0 +1,55 @@
+{
+  "schema": "parity-received-expectations/v1",
+  "scope": "independently declared backend-received synthetic fields; not SDK wire",
+  "basis": "Preserved original expect/expectJava backend event assertions; native omitted body versus Rust null; E-04 query percent decoding; Rust scalar mirrors retain final values. No observations are used to generate expectations.",
+  "profiles": {
+    "java": {
+      "httpMethod": {"state": "value", "value": "POST"},
+      "path": {"state": "value", "value": "/parity/a"},
+      "headers": {"state": "absent"},
+      "multiValueHeaders": {"state": "object", "values": {}},
+      "queryStringParameters": {"state": "absent"},
+      "multiValueQueryStringParameters": {"state": "object", "values": {}},
+      "body": {"state": "absent"},
+      "isBase64Encoded": {"state": "value", "value": false}
+    },
+    "rust": {
+      "httpMethod": {"state": "value", "value": "POST"},
+      "path": {"state": "value", "value": "/parity/a"},
+      "headers": {"state": "object", "values": {}},
+      "multiValueHeaders": {"state": "object", "values": {}},
+      "queryStringParameters": {"state": "null"},
+      "multiValueQueryStringParameters": {"state": "null"},
+      "body": {"state": "null"},
+      "isBase64Encoded": {"state": "value", "value": false}
+    }
+  },
+  "cases": {
+    "PARITY-created": [{}],
+    "PARITY-no-content": [{}],
+    "PARITY-empty": [{}],
+    "PARITY-application-error": [{}],
+    "PARITY-body-absent": [{}],
+    "PARITY-body-null": [{}],
+    "PARITY-body-empty": [{"bodyText": ""}],
+    "PARITY-body-json": [{"bodyText": "{\"n\":9007199254740993}"}],
+    "PARITY-body-unicode": [{"bodyText": "雪 café"}],
+    "PARITY-forwarding": [{
+      "bodyText": "synthetic",
+      "java": {
+        "multiValueHeaders": {"state": "object", "values": {"x-synthetic": {"state": "value", "value": ["first", "second"]}}},
+        "multiValueQueryStringParameters": {"state": "object", "values": {"q": {"state": "value", "value": ["a+b", "%2B", "雪", ""]}, "empty": {"state": "value", "value": [""]}}}
+      },
+      "rust": {
+        "headers": {"state": "object", "values": {"x-synthetic": {"state": "value", "value": "second"}}},
+        "multiValueHeaders": {"state": "object", "values": {"x-synthetic": {"state": "value", "value": ["first", "second"]}}},
+        "queryStringParameters": {"state": "object", "values": {"q": {"state": "value", "value": ""}, "empty": {"state": "value", "value": ""}}},
+        "multiValueQueryStringParameters": {"state": "object", "values": {"q": {"state": "value", "value": ["a+b", "+", "雪", ""]}, "empty": {"state": "value", "value": [""]}}}
+      }
+    }],
+    "PARITY-routing-ab-recovery": [{}, {"path": "/parity/b"}, {}],
+    "PARITY-binary-cookies": [{}, {}, {}, {}],
+    "PARITY-malformed-body": [{}, {}],
+    "PARITY-unknown-route-recovery": [{}, {"calls": 0}, {"path": "/parity/b"}]
+  }
+}

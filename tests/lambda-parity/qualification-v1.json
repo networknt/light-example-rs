@@ -1,0 +1,300 @@
+{
+  "schema": "lambda-parity-qualification/v1",
+  "inventoryCases": 25,
+  "originalInventorySha256": "33446633a867ee5776a9eebb7970906f00ade754cf9faf8c23da45807c834ec6",
+  "defaultRunnerSelection": 14,
+  "originalDeferredOrUnavailable": 11,
+  "reconciledElevenCounts": {
+    "covered-independent-profile": 1,
+    "partial-runner-gap": 3,
+    "covered-local-profile": 1,
+    "partial-production-defect": 1,
+    "covered-aws-profile": 2,
+    "platform-and-activation-gates": 2,
+    "explicit-runtime-deferral": 1
+  },
+  "originalFixturesAndExpectationsChanged": false,
+  "SDKWire": "unmeasured",
+  "rows": [
+    {
+      "id": "PARITY-created",
+      "family": "responses",
+      "originalRunnerAvailability": "local",
+      "currentQualification": "covered-aws-profile",
+      "coverage": "Existing14-case proxy batch: independent per-side response expectations; actual42 backend-received events, routing/count/recovery proof.",
+      "nextImplementationOrGate": "none for named case; keep future semantic expansions separate",
+      "evidence": [
+        "/home/steve/workspace/artifacts/implementation/light-lambda/parity-received-aws-20261023T001101Z/REPORT.md"
+      ]
+    },
+    {
+      "id": "PARITY-no-content",
+      "family": "responses",
+      "originalRunnerAvailability": "local",
+      "currentQualification": "covered-aws-profile",
+      "coverage": "Existing14-case proxy batch: independent per-side response expectations; actual42 backend-received events, routing/count/recovery proof.",
+      "nextImplementationOrGate": "none for named case; keep future semantic expansions separate",
+      "evidence": [
+        "/home/steve/workspace/artifacts/implementation/light-lambda/parity-received-aws-20261023T001101Z/REPORT.md"
+      ]
+    },
+    {
+      "id": "PARITY-empty",
+      "family": "responses",
+      "originalRunnerAvailability": "local",
+      "currentQualification": "covered-aws-profile",
+      "coverage": "Existing14-case proxy batch: independent per-side response expectations; actual42 backend-received events, routing/count/recovery proof.",
+      "nextImplementationOrGate": "none for named case; keep future semantic expansions separate",
+      "evidence": [
+        "/home/steve/workspace/artifacts/implementation/light-lambda/parity-received-aws-20261023T001101Z/REPORT.md"
+      ]
+    },
+    {
+      "id": "PARITY-application-error",
+      "family": "responses",
+      "originalRunnerAvailability": "local",
+      "currentQualification": "covered-aws-profile",
+      "coverage": "Existing14-case proxy batch: independent per-side response expectations; actual42 backend-received events, routing/count/recovery proof.",
+      "nextImplementationOrGate": "none for named case; keep future semantic expansions separate",
+      "evidence": [
+        "/home/steve/workspace/artifacts/implementation/light-lambda/parity-received-aws-20261023T001101Z/REPORT.md"
+      ]
+    },
+    {
+      "id": "PARITY-body-absent",
+      "family": "body",
+      "originalRunnerAvailability": "local",
+      "currentQualification": "covered-aws-profile",
+      "coverage": "Existing14-case proxy batch: independent per-side response expectations; actual42 backend-received events, routing/count/recovery proof.",
+      "nextImplementationOrGate": "none for named case; keep future semantic expansions separate",
+      "evidence": [
+        "/home/steve/workspace/artifacts/implementation/light-lambda/parity-received-aws-20261023T001101Z/REPORT.md"
+      ]
+    },
+    {
+      "id": "PARITY-body-null",
+      "family": "body",
+      "originalRunnerAvailability": "local",
+      "currentQualification": "covered-aws-profile",
+      "coverage": "Existing14-case proxy batch: independent per-side response expectations; actual42 backend-received events, routing/count/recovery proof.",
+      "nextImplementationOrGate": "none for named case; keep future semantic expansions separate",
+      "evidence": [
+        "/home/steve/workspace/artifacts/implementation/light-lambda/parity-received-aws-20261023T001101Z/REPORT.md"
+      ]
+    },
+    {
+      "id": "PARITY-body-empty",
+      "family": "body",
+      "originalRunnerAvailability": "local",
+      "currentQualification": "covered-aws-profile",
+      "coverage": "Existing14-case proxy batch: independent per-side response expectations; actual42 backend-received events, routing/count/recovery proof.",
+      "nextImplementationOrGate": "none for named case; keep future semantic expansions separate",
+      "evidence": [
+        "/home/steve/workspace/artifacts/implementation/light-lambda/parity-received-aws-20261023T001101Z/REPORT.md"
+      ]
+    },
+    {
+      "id": "PARITY-body-json",
+      "family": "body",
+      "originalRunnerAvailability": "local",
+      "currentQualification": "covered-aws-profile",
+      "coverage": "Existing14-case proxy batch: independent per-side response expectations; actual42 backend-received events, routing/count/recovery proof.",
+      "nextImplementationOrGate": "none for named case; keep future semantic expansions separate",
+      "evidence": [
+        "/home/steve/workspace/artifacts/implementation/light-lambda/parity-received-aws-20261023T001101Z/REPORT.md"
+      ]
+    },
+    {
+      "id": "PARITY-body-unicode",
+      "family": "body",
+      "originalRunnerAvailability": "local",
+      "currentQualification": "covered-aws-profile",
+      "coverage": "Existing14-case proxy batch: independent per-side response expectations; actual42 backend-received events, routing/count/recovery proof.",
+      "nextImplementationOrGate": "none for named case; keep future semantic expansions separate",
+      "evidence": [
+        "/home/steve/workspace/artifacts/implementation/light-lambda/parity-received-aws-20261023T001101Z/REPORT.md"
+      ]
+    },
+    {
+      "id": "PARITY-forwarding",
+      "family": "forwarding",
+      "originalRunnerAvailability": "local",
+      "currentQualification": "covered-aws-profile",
+      "coverage": "Existing14-case proxy batch: independent per-side response expectations; actual42 backend-received events, routing/count/recovery proof.",
+      "nextImplementationOrGate": "none for named case; keep future semantic expansions separate",
+      "evidence": [
+        "/home/steve/workspace/artifacts/implementation/light-lambda/parity-received-aws-20261023T001101Z/REPORT.md"
+      ]
+    },
+    {
+      "id": "PARITY-routing-ab-recovery",
+      "family": "recovery",
+      "originalRunnerAvailability": "local",
+      "currentQualification": "covered-aws-profile",
+      "coverage": "Existing14-case proxy batch: independent per-side response expectations; actual42 backend-received events, routing/count/recovery proof.",
+      "nextImplementationOrGate": "none for named case; keep future semantic expansions separate",
+      "evidence": [
+        "/home/steve/workspace/artifacts/implementation/light-lambda/parity-received-aws-20261023T001101Z/REPORT.md"
+      ]
+    },
+    {
+      "id": "PARITY-pet-store",
+      "family": "routing",
+      "originalRunnerAvailability": "deferred",
+      "currentQualification": "covered-independent-profile",
+      "coverage": "Four pet-store routes/auth/parser/warm comparison:20/20 expectations,10/10 approved pairs,0/10 byte-identical; counts unmeasured. Keep outside synthetic totals.",
+      "nextImplementationOrGate": "none for named ten-case subset; broader business/schema cases remain independent",
+      "evidence": [
+        "/home/steve/workspace/artifacts/implementation/light-lambda/WP17-offline-parity-review-20261022T211639Z/REPORT.md"
+      ]
+    },
+    {
+      "id": "PARITY-echo-dynamic",
+      "family": "forwarding",
+      "originalRunnerAvailability": "deferred",
+      "currentQualification": "partial-runner-gap",
+      "coverage": "Forwarded-event proof already covers method/path/query multiplicity/synthetic headers/body/base64 with42/42 actual received-event expectations; dynamic echo response body adapter remains absent.",
+      "nextImplementationOrGate": "runner-only: bind dynamic echo response fields to independent request/metadata expectations; do not duplicate handler logic",
+      "evidence": [
+        "/home/steve/workspace/artifacts/implementation/light-lambda/parity-received-aws-20261023T001101Z/REPORT.md"
+      ]
+    },
+    {
+      "id": "PARITY-function-error",
+      "family": "backend-failure",
+      "originalRunnerAvailability": "deferred",
+      "currentQualification": "covered-local-profile",
+      "coverage": "Ordinary genuine backend Runtime API error -> packaged Java500/ERR14004 and Rust502/ERR14014, once per request, privacy/warm recovery. AWS platform-timeout FunctionError is separately covered.",
+      "nextImplementationOrGate": "ordinary synthetic FunctionError AWS propagation needs a separately approved case batch; no production repair needed for tested shape",
+      "evidence": [
+        "/home/steve/workspace/artifacts/implementation/light-lambda/parity-java-status-format-20261023T061219Z/errors/report.json",
+        "/home/steve/workspace/artifacts/implementation/light-lambda/parity-next-local-20261023T035300Z/errors-header-fixed/report.json",
+        "/home/steve/workspace/artifacts/implementation/light-lambda/parity-timing-aws-20261023T024105Z/REPORT.md"
+      ]
+    },
+    {
+      "id": "PARITY-invalid-envelopes",
+      "family": "backend-failure",
+      "originalRunnerAvailability": "deferred",
+      "currentQualification": "partial-production-defect",
+      "coverage": "Approved typed status-format guard locally qualified on separate Java candidate122d0339\u20263db7:22/22 finite envelope/FunctionError expectations,11/11 paired contracts,0/11 byte-identical;22 entries/20 completions. Missing/null status, privacy and recovery preserved.",
+      "nextImplementationOrGate": "Broader shared exchange-state handling remains production work for nonmatching nested/unrelated parse errors; original historical assertions preserved. No deployment authorized.",
+      "evidence": [
+        "/home/steve/workspace/artifacts/implementation/light-lambda/parity-java-status-format-20261023T061219Z/errors/report.json",
+        "/home/steve/workspace/artifacts/implementation/light-lambda/parity-java-status-format-20261023T061219Z/REPORT.md"
+      ]
+    },
+    {
+      "id": "PARITY-binary-cookies",
+      "family": "responses",
+      "originalRunnerAvailability": "local",
+      "currentQualification": "covered-aws-profile",
+      "coverage": "Existing14-case proxy batch: independent per-side response expectations; actual42 backend-received events, routing/count/recovery proof.",
+      "nextImplementationOrGate": "none for named case; keep future semantic expansions separate",
+      "evidence": [
+        "/home/steve/workspace/artifacts/implementation/light-lambda/parity-received-aws-20261023T001101Z/REPORT.md"
+      ]
+    },
+    {
+      "id": "PARITY-unknown-template-route",
+      "family": "routing",
+      "originalRunnerAvailability": "deferred",
+      "currentQualification": "partial-runner-gap",
+      "coverage": "Literal A/B, unknown route/zero dispatch/warm recovery qualified; pet-store template targets independently exercised. Synthetic literal-vs-template specificity and method/wildcard boundaries remain unselected.",
+      "nextImplementationOrGate": "runner-only supported target-route fixture/profile, not Router rewriting",
+      "evidence": [
+        "/home/steve/workspace/artifacts/implementation/light-lambda/parity-received-aws-20261023T001101Z/REPORT.md",
+        "/home/steve/workspace/artifacts/implementation/light-lambda/WP17-offline-parity-review-20261022T211639Z/REPORT.md"
+      ]
+    },
+    {
+      "id": "PARITY-middleware-composition",
+      "family": "middleware",
+      "originalRunnerAvailability": "deferred",
+      "currentQualification": "partial-runner-gap",
+      "coverage": "New paired Specification->JWT/scope->proxy profile28/28 local expectations,20 actual backend entries/18 completions,1 JWKS fetch per side,8 zero-dispatch auth/scope rejections; Rust composed RIE chain remains separate.",
+      "nextImplementationOrGate": "runner-only for broader registered-handler compositions/order interactions; JWT batch ready locally, not AWS-qualified",
+      "evidence": [
+        "/home/steve/workspace/artifacts/implementation/light-lambda/parity-java-status-format-20261023T061219Z/jwt/report.json",
+        "/home/steve/workspace/artifacts/implementation/light-lambda/parity-next-local-20261023T035300Z/jwt-explicit-native-trust/report.json"
+      ]
+    },
+    {
+      "id": "PARITY-iam-denied",
+      "family": "aws-dispatch",
+      "originalRunnerAvailability": "deferred",
+      "currentQualification": "covered-aws-profile",
+      "coverage": "Valid denied:1 positive control; exact IAM excludes target for four gateway roles; denial returns Java400/ERR10086/Rust502/ERR14019,0 denied executions, warm recovery.",
+      "nextImplementationOrGate": "none for named subset; preserve evidence limits",
+      "evidence": [
+        "/home/steve/workspace/artifacts/implementation/light-lambda/parity-timing-aws-20261023T024105Z/REPORT.md"
+      ]
+    },
+    {
+      "id": "PARITY-timing",
+      "family": "timing",
+      "originalRunnerAvailability": "deferred",
+      "currentQualification": "covered-aws-profile",
+      "coverage": "Delayed success, native SDK1s vs Rust1100ms deadline, actual backend4s platform timeout, late completion after gateway return and version-specific warm recovery qualified.",
+      "nextImplementationOrGate": "none for named subset; no freeze/thaw/concurrency/performance claim",
+      "evidence": [
+        "/home/steve/workspace/artifacts/implementation/light-lambda/parity-timing-aws-20261023T024105Z/REPORT.md"
+      ]
+    },
+    {
+      "id": "PARITY-validator",
+      "family": "capability",
+      "originalRunnerAvailability": "unavailable",
+      "currentQualification": "platform-and-activation-gates",
+      "coverage": "Application provider/lifecycle/precision wiring qualified non-child; default activation remains closed.",
+      "nextImplementationOrGate": "platform clearance unconfirmed; original bundle verifier failure/two missing parent binary provenance, reproducible immutable packaging/resource/semantic gates remain; no replacement-worker execution",
+      "evidence": [
+        "/home/steve/workspace/artifacts/implementation/light-lambda/WP17-log-provenance-review-20261022T151431Z/REPORT.md"
+      ]
+    },
+    {
+      "id": "PARITY-router-rewrite",
+      "family": "capability",
+      "originalRunnerAvailability": "unavailable",
+      "currentQualification": "platform-and-activation-gates",
+      "coverage": "Provider/controller/backend lifecycle and fail-closed unavailable mapping qualified non-child in selected profile; forwarding evidence is separate.",
+      "nextImplementationOrGate": "platform clearance and worker provenance before actual rewrite execution; default rewrite activation remains closed and production bounds/loading/semantic gates remain",
+      "evidence": [
+        "/home/steve/workspace/light-fabric-light-lambda/apps/light-lambda/DELIVERY-HANDOFF.md"
+      ]
+    },
+    {
+      "id": "PARITY-invalid-outer",
+      "family": "backend-failure",
+      "originalRunnerAvailability": "unavailable",
+      "currentQualification": "explicit-runtime-deferral",
+      "coverage": "Rust lambda_runtime backend serializes JSON: returning a JSON string cannot prove malformed outer runtime bytes. Malformed nested body passthrough is already covered.",
+      "nextImplementationOrGate": "requires deliberate raw Runtime API test backend capability/new runtime profile for AWS proof; ordinary local Invoke fault stub can cover parser boundary separately; not evidence of a missing production gateway handler",
+      "evidence": [
+        "/home/steve/workspace/artifacts/implementation/light-lambda/parity-received-aws-20261023T001101Z/REPORT.md"
+      ]
+    },
+    {
+      "id": "PARITY-malformed-body",
+      "family": "responses",
+      "originalRunnerAvailability": "local",
+      "currentQualification": "covered-aws-profile",
+      "coverage": "Existing14-case proxy batch: independent per-side response expectations; actual42 backend-received events, routing/count/recovery proof.",
+      "nextImplementationOrGate": "none for named case; keep future semantic expansions separate",
+      "evidence": [
+        "/home/steve/workspace/artifacts/implementation/light-lambda/parity-received-aws-20261023T001101Z/REPORT.md"
+      ]
+    },
+    {
+      "id": "PARITY-unknown-route-recovery",
+      "family": "routing",
+      "originalRunnerAvailability": "local",
+      "currentQualification": "covered-aws-profile",
+      "coverage": "Existing14-case proxy batch: independent per-side response expectations; actual42 backend-received events, routing/count/recovery proof.",
+      "nextImplementationOrGate": "none for named case; keep future semantic expansions separate",
+      "evidence": [
+        "/home/steve/workspace/artifacts/implementation/light-lambda/parity-received-aws-20261023T001101Z/REPORT.md"
+      ]
+    }
+  ]
+}

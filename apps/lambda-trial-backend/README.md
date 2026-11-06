@@ -105,3 +105,13 @@ were rerun after correcting and verifying the intended five-second timeout.
 Evidence: `/home/steve/workspace/artifacts/implementation/light-lambda/WP17-backend-deployment-20261022/REPORT.md`.
 The accepted gateway remains unchanged. Gateway-through-backend qualification
 and an attributable JWKS request count remain pending.
+
+
+## Bounded received-event observations (local-qualified, not deployed)
+
+Default off. Set `PARITY_BACKEND_OBSERVATIONS=synthetic-v1` only on owned synthetic parity backends. It emits separate `parity-request-observation/v1` records of selected method/path, q/empty query multiplicity, x-synthetic/content-type headers, body UTF-8 hex bytes/presence and received base64 flag. Closed synthetic value allowlists exclude credentials/authorization/cookies/requestContext; limits are128 observed body bytes,8 selected array values,32 map entries and4096 serialized record bytes. Unsupported values are redacted; logging never changes finite-mode responses.
+
+These records describe the event received by the backend, not SDK signing/header/retry/wire data. JWKS counts are excluded. [Code, exact results and bounds](/home/steve/workspace/artifacts/implementation/light-lambda/parity-backend-observations-20261022T234816Z/REPORT.md). Preserve old AWS version1; the scoped version2 update is review-only.
+
+
+Local IAM/timing batch: see [TIMING.md](/home/steve/workspace/light-example-rs/tests/lambda-parity/TIMING.md). Fixed delays require startup bounded-v1 opt-in and delay identity. New local results17/18 (Java backend-timeout defect remains); this does not alter prior version-2 qualification or authorize AWS deployment.

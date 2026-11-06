@@ -1,0 +1,20 @@
+{
+  "schema": "parity-iam-timing/v1",
+  "profile": "bounded-v1",
+  "fixedDelaysMs": {"delay-success": 250, "deadline-delay": 2500, "lambda-timeout": 6000},
+  "limits": {"backendLambdaTimeoutMs": 4000, "gatewayLambdaTimeoutMs": 20000, "fastApiCallTimeoutMs": 1000, "patientApiCallTimeoutMs": 10000, "rustFastIngressTimeoutMs": 1350, "rustResponseReserveMs": 250, "rustPostReserveMs": 100, "rustFastSdkTimeoutMs": 10000, "evidenceWindowMs": 60000, "concurrency": 1, "runnerRetries": 0},
+  "deadlineMechanism": {"java": "native Invoke apiCallTimeout/apiCallAttemptTimeout 1000ms", "rust": "real absolute request deadline: ingress1350ms minus response reserve250ms = 1100ms; post reserve100ms independently sets response deadline1250ms, not another subtraction; SDK caps10000ms cannot fire first"},
+  "timingMs": {"success": [0, 3000], "denied": [0, 3000], "delay-success": [200, 3000], "deadline-delay": [750, 2500], "lambda-timeout": [3500, 7000], "lateCompletion": [2400, 4500]},
+  "expectations": {
+    "java": {"denied": {"status": 400, "code": "ERR10086"}, "deadline-delay": {"status": 400, "code": "ERR10086"}, "lambda-timeout": {"status": 500, "code": "ERR14004"}},
+    "rust": {"denied": {"status": 502, "code": "ERR14019"}, "deadline-delay": {"status": 504, "code": "ERR14017"}, "lambda-timeout": {"status": 502, "code": "ERR14014"}}
+  },
+  "cases": [
+    {"id": "TIMING-iam-denied-recovery", "profile": "fast", "steps": [{"target": "echo-a", "mode": "empty"}, {"target": "denied", "mode": "empty", "failure": "denied"}, {"target": "echo-a", "mode": "empty"}]},
+    {"id": "TIMING-delayed-success", "profile": "fast", "steps": [{"target": "delay", "mode": "delay-success"}]},
+    {"id": "TIMING-gateway-deadline-recovery", "profile": "fast", "steps": [{"target": "delay", "mode": "deadline-delay", "failure": "deadline-delay"}, {"target": "echo-a", "mode": "empty"}]},
+    {"id": "TIMING-backend-timeout-recovery", "profile": "patient", "steps": [{"target": "echo-a", "mode": "empty"}, {"target": "delay", "mode": "lambda-timeout", "failure": "lambda-timeout"}, {"target": "echo-a", "mode": "empty"}]}
+  ],
+  "contracts": ["Rust serverless-aws limits.rs ERR14019/ERR14014 and serverless-core StatusError::timeout", "Native LambdaProxyMiddleware Invoke failure ERR10086; FunctionError missing status reaches ChainExecutor ERR14004", "No cancellation claim: deadline-delay must complete after gateway timeout; backend-timeout has entry and platform termination evidence without completion", "Timing boundaries declared before execution; failures are retained, never retried or reclassified"],
+  "localEvidenceBoundary": "IAM HTTP403 and Lambda platform timeout are owned simulations; actual packaged Init/service/SDK and backend process execute. AWS IAM/platform proof pending approval."
+}

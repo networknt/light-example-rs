@@ -34,6 +34,43 @@ class SuiteContract(unittest.TestCase):
         with self.assertRaises(ValueError):
             fixture({'id': 'case', 'reason': 'contract', 'requests': [{'mode': 'unknown'}]}, self.template)
 
+    def test_binary_and_cookies_preserve_bytes_encoding_and_order(self):
+        f = fixture({'id': 'case', 'reason': 'contract', 'requests': [
+            {'mode': 'binary'}, {'mode': 'cookies'}]}, self.template)
+        binary, cookies = f['steps']
+        for key in ['expect', 'expectJava']:
+            self.assertEqual(binary[key]['body'], 'AP9B')
+            self.assertTrue(binary[key]['bodyBase64'])
+            self.assertEqual(cookies[key]['headers'], [
+                ['set-cookie', 'synthetic=a; Secure'], ['set-cookie', 'synthetic=b; Secure']])
+
+    def test_route_rejection_is_zero_dispatch_not_backend_error(self):
+        f = fixture({'id': 'case', 'reason': 'contract', 'requests': [
+            {'mode': 'route-miss', 'path': '/parity/missing'}, {'mode': 'created'}]}, self.template)
+        miss = f['steps'][0]
+        self.assertEqual(miss['backend'], [])
+        self.assertEqual(f['differences'], ['backendCalls'])
+        for key in ['expect', 'expectJava']:
+            self.assertEqual(miss[key]['backendCalls'], [])
+            self.assertEqual(miss[key]['status'], 400)
+            self.assertEqual(json.loads(miss[key]['body'])['code'], 'ERR10086')
+        with self.assertRaisesRegex(ValueError, 'unmapped path'):
+            fixture({'id': 'case', 'reason': 'contract', 'requests': [{'mode': 'route-miss'}]}, self.template)
+
+    def test_valid_envelope_does_not_parse_opaque_body(self):
+        f = fixture({'id': 'case', 'reason': 'contract', 'requests': [{'mode': 'malformed-json'}]}, self.template)
+        self.assertEqual(f['expect']['body'], '{broken')
+        self.assertEqual(f['expect']['status'], 200)
+
+    def test_failed_command_cannot_be_green_even_with_passing_results(self):
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory)
+            write(out / 'manifest.json', {'selected': 1, 'total': 1, 'rows': [
+                {'id': 'case', 'selected': True, 'outcome': 'equivalent-pass'}]})
+            write(out / 'backend/report.json', {'passed': True})
+            write(out / 'commands.json', [{'exitCode': 124, 'command': ['test-command']}])
+            self.assertFalse(summarize(out)['green'])
+
     def test_missing_evidence_and_selected_unavailable_are_non_green(self):
         with tempfile.TemporaryDirectory() as directory:
             out = Path(directory)

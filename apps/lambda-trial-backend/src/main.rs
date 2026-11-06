@@ -1,6 +1,7 @@
 use lambda_runtime::{Error, LambdaEvent, service_fn};
 use serde::Deserialize;
 use serde_json::{Value, json};
+mod observations;
 
 mod parity;
 
