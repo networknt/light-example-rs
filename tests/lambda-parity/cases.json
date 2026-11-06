@@ -234,10 +234,25 @@
   {
     "id": "PARITY-binary-cookies",
     "family": "responses",
-    "availability": "deferred",
-    "reason": "Backend modes directly tested; native response adaptation needs independent per-side expectations",
+    "availability": "local",
+    "reason": "E-03 binary fidelity and E-02 ordered Set-Cookie from directly qualified finite backend modes; warm response recovery",
     "requiredCapabilities": [
-      "binary-cookies"
+      "proxy",
+      "multi-value-ingress"
+    ],
+    "requests": [
+      {
+        "mode": "created"
+      },
+      {
+        "mode": "binary"
+      },
+      {
+        "mode": "cookies"
+      },
+      {
+        "mode": "created"
+      }
     ]
   },
   {
@@ -301,6 +316,47 @@
     "reason": "lambda_runtime serializes JSON; returning a JSON string is not invalid outer bytes",
     "requiredCapabilities": [
       "invalid-outer"
+    ]
+  },
+  {
+    "id": "PARITY-malformed-body",
+    "family": "responses",
+    "availability": "local",
+    "reason": "Valid backend envelope with opaque malformed JSON body is passed byte-exact, not parsed or relabelled as invalid envelope",
+    "requiredCapabilities": [
+      "proxy",
+      "multi-value-ingress"
+    ],
+    "requests": [
+      {
+        "mode": "malformed-json"
+      },
+      {
+        "mode": "created"
+      }
+    ]
+  },
+  {
+    "id": "PARITY-unknown-route-recovery",
+    "family": "routing",
+    "availability": "local",
+    "reason": "D-01 and approved route-miss diagnostic: ERR10086, no dispatch; successful following warm route",
+    "requiredCapabilities": [
+      "proxy",
+      "multi-value-ingress"
+    ],
+    "requests": [
+      {
+        "mode": "created"
+      },
+      {
+        "mode": "route-miss",
+        "path": "/parity/missing"
+      },
+      {
+        "mode": "created",
+        "path": "/parity/b"
+      }
     ]
   }
 ]

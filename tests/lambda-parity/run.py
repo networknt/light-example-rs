@@ -109,13 +109,29 @@ def fixture(case, template, run_id='unit-contract'):
             response['statusCode'] = 204
         elif mode == 'application-error':
             response.update(statusCode=500, body='{"code":"PARITY_APPLICATION_ERROR"}')
+        elif mode == 'binary':
+            response.update(body='AP9B', isBase64Encoded=True)
+        elif mode == 'cookies':
+            response.update(body='cookies', multiValueHeaders={
+                'set-cookie': ['synthetic=a; Secure', 'synthetic=b; Secure']})
+        elif mode == 'malformed-json':
+            # An opaque body inside a valid envelope is not an invalid envelope.
+            response['body'] = '{broken'
+        elif mode == 'route-miss':
+            response.update(statusCode=400, body=json.dumps({
+                'statusCode': 400, 'code': 'ERR10086', 'message': 'FAILED_TO_INVOKE_LAMBDA',
+                'description': f'Failed to invoke lambda function {raw["path"]}@post.',
+                'severity': 'ERROR'}, separators=(',', ':')))
         else:
             if mode != 'empty':
                 raise ValueError('mode requires an explicitly declared fixture adapter: ' + mode)
-        response['headers'] = {'content-type': 'application/json'}
+        response['headers'] = ({} if mode == 'cookies' else {
+            'content-type': 'application/octet-stream' if mode == 'binary' else 'application/json'})
         expected = {'outcome': 'response', 'status': response['statusCode'],
-                    'headers': [['content-type', 'application/json']],
-                    'headersAbsent': [], 'body': response['body'], 'bodyBase64': False,
+                    'headers': [[k, v] for k, v in response['headers'].items()] + [
+                        [k, v] for k, values in response.get('multiValueHeaders', {}).items() for v in values],
+                    'headersAbsent': [], 'body': response['body'],
+                    'bodyBase64': response['isBase64Encoded'],
                     'jwksFetches': 0}
         forwarded = {'path': raw['path'], 'httpMethod': raw['httpMethod'],
                      'isBase64Encoded': False}
@@ -141,10 +157,25 @@ def fixture(case, template, run_id='unit-contract'):
         if logical.get('body') is None:
             java['backendCalls'][0]['eventAbsent'] = ['/body']
             expected['backendCalls'][0]['event']['body'] = None
+        backend = [{'match': {'target': target}, 'respond': {
+            'functionError': None, 'payload': response}}]
+        if mode == 'route-miss':
+            if raw['path'] != '/parity/missing':
+                raise ValueError('route-miss requires the declared unmapped path')
+            expected['backendCalls'] = []
+            java['backendCalls'] = []
+            java['headers'] = [['Content-Type', 'application/json']]
+            backend = []
         steps.append({'rawEvent': raw, 'headerMode': 'multi',
-                      'backend': [{'match': {'target': target}, 'respond': {
-                          'functionError': None, 'payload': response}}],
+                      'backend': backend,
                       'expect': expected, 'expectJava': java})
+    # Declarations describe exact observed dimensions; stale declarations fail
+    # in the existing comparator. A route-only case has no backend-call delta.
+    if not any(s['backend'] for s in steps):
+        raise ValueError('route rejection profile requires a successful recovery step')
+    f['differences'] = ['backendCalls']
+    # Existing comparator uses the suite's case-insensitive header-name rule.
+    # Per-side exact expectations above still retain native/Rust casing.
     for key in ['rawEvent', 'backend', 'expect', 'expectJava']:
         f.pop(key, None)
     if len(steps) == 1:
@@ -231,6 +262,10 @@ def summarize(out):
         green = False
     if (out / 'runner-error.json').exists():
         green = False
+    commands = read(out / 'commands.json') if (out / 'commands.json').exists() else []
+    command_failures = [c for c in commands if c['exitCode'] != 0]
+    if command_failures:
+        green = False
     files = {str(p.relative_to(out)): digest(p) for p in sorted(out.rglob('*'))
              if p.is_file() and p.relative_to(out).as_posix() not in ['report.json', 'report.md']}
     report = {'schema': 'lambda-parity-report/v1', 'selected': manifest['selected'],
@@ -277,6 +312,8 @@ def run(args):
         for path in (out / 'fixtures').glob('*.json'):
             f = read(path)
             for step in f.get('steps', [f]):
+                if not step['backend']:
+                    continue  # A rejection is not a backend execution.
                 mode = step['rawEvent']['multiValueHeaders']['x-parity-case'][0]
                 target = step['backend'][0]['match']['target'].removeprefix('parity-')
                 if step['backend'][0]['respond']['payload'] != contracts[target][mode]:

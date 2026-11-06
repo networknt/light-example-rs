@@ -13,6 +13,19 @@ const HEADERS: &[&str] = &[
     "content-type",
 ];
 
+/// Deployment-owned finite timing profile; requests cannot choose durations.
+fn delay_ms(identity: &str, profile: Option<&str>, mode: &str) -> Option<u64> {
+    if identity != "delay" || profile != Some("bounded-v1") {
+        return None;
+    }
+    match mode {
+        "delay-success" => Some(250),
+        "deadline-delay" => Some(2500),
+        "lambda-timeout" => Some(6000),
+        _ => None,
+    }
+}
+
 pub fn selected(event: &Value) -> bool {
     ["headers", "multiValueHeaders"].iter().any(|map| {
         event[*map]
@@ -131,6 +144,8 @@ pub async fn handle(event: &Value, request_id: &str) -> Result<Value, Error> {
     let ids_valid = ids.is_some();
     let ids = ids.unwrap_or_else(|| vec!["invalid".into(); 3]);
     let requested_mode = control(event, "x-parity-case").unwrap_or_default();
+    let timing_profile = std::env::var("PARITY_BACKEND_TIMING").ok();
+    let delay = delay_ms(&identity, timing_profile.as_deref(), &requested_mode);
     if !["echo-a", "echo-b", "delay", "denied"].contains(&identity.as_str())
         || version.len() > 64
         || request_id.len() > 128
@@ -155,7 +170,7 @@ pub async fn handle(event: &Value, request_id: &str) -> Result<Value, Error> {
     let valid = ids_valid
         && echoed.is_some()
         && !event["body"].as_str().is_some_and(|s| s.len() > MAX_BODY)
-        && known.contains(&requested_mode.as_str());
+        && (known.contains(&requested_mode.as_str()) || delay.is_some());
     let mode = if valid {
         requested_mode.as_str()
     } else {
@@ -163,12 +178,28 @@ pub async fn handle(event: &Value, request_id: &str) -> Result<Value, Error> {
     };
     let record = |phase: &str| json!({"schema":"parity-execution/v1","phase":phase,"runId":ids[0],"caseId":ids[1],"attemptId":ids[2],"backendIdentity":identity,"backendVersion":version,"executionRequestId":request_id,"modeTable":TABLE,"mode":mode});
     eprintln!("{}", record("entry"));
+    if ids_valid {
+        let enabled = std::env::var("PARITY_BACKEND_OBSERVATIONS").as_deref()
+            == Ok(crate::observations::PROFILE);
+        let metadata = json!({"runId":ids[0],"caseId":ids[1],"attemptId":ids[2],"backendIdentity":identity,"backendVersion":version,"executionRequestId":request_id});
+        if let Some(observed) = crate::observations::record(enabled, event, &metadata) {
+            eprintln!("{observed}");
+        }
+    }
+    // Only validated controls enter the bounded delay. Entry/observation precede
+    // sleep; timeout/cancellation may prevent completion, which must not be forged.
+    if valid && let Some(ms) = delay {
+        tokio::time::sleep(std::time::Duration::from_millis(ms)).await;
+    }
     let result = match mode {
         "invalid-control" => invalid(),
         "echo" => envelope(200, echoed.expect("validated echo").to_string()),
         "created" => envelope(201, r#"{"result":"created"}"#.into()),
         "no-content" => envelope(204, String::new()),
         "empty" => envelope(200, String::new()),
+        "delay-success" | "deadline-delay" | "lambda-timeout" => {
+            envelope(200, r#"{"result":"delayed"}"#.into())
+        }
         "application-error" => envelope(500, r#"{"code":"PARITY_APPLICATION_ERROR"}"#.into()),
         "function-error" => {
             return Err(std::io::Error::other("synthetic parity function error").into());
@@ -196,6 +227,22 @@ mod tests {
     use super::*;
     fn event(mode: &str) -> Value {
         json!({"httpMethod":"POST","path":"/parity/a","headers":{"x-parity-case":mode,"x-parity-run":"run","x-parity-id":"case","x-parity-attempt":"java-1","authorization":"never-echo","cookie":"never-echo","x-private":"never-echo"},"queryStringParameters":{"token":"never-echo","q":"a+b"},"body":"synthetic"})
+    }
+    #[test]
+    fn fixed_timing_profile_is_opt_in_and_identity_scoped() {
+        for (mode, expected) in [
+            ("delay-success", 250),
+            ("deadline-delay", 2500),
+            ("lambda-timeout", 6000),
+        ] {
+            assert_eq!(delay_ms("delay", Some("bounded-v1"), mode), Some(expected));
+            for identity in ["echo-a", "echo-b", "denied"] {
+                assert_eq!(delay_ms(identity, Some("bounded-v1"), mode), None);
+            }
+            assert_eq!(delay_ms("delay", None, mode), None);
+            assert_eq!(delay_ms("delay", Some("other"), mode), None);
+        }
+        assert_eq!(delay_ms("delay", Some("bounded-v1"), "600000"), None);
     }
     #[tokio::test]
     async fn finite_modes_privacy_and_real_error() {

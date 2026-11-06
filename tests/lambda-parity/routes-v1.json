@@ -1,0 +1,20 @@
+{
+  "schema":"parity-target-routes/v1",
+  "basis":"Native LambdaProxyMiddleware per-method PathTemplateMatcher and approved Rust R-01a literal/parameter/wildcard precedence. Target routing only, not Router rewriting.",
+  "routes":[["/parity/*@post","parity-echo-a"],["/parity/{pet}@post","parity-echo-b"],["/parity/{pet}/detail@post","parity-echo-b"],["/parity/a@post","parity-echo-a"],["/parity/a@get","parity-echo-b"]],
+  "steps":[
+    {"id":"literal-over-parameter","method":"POST","path":"/parity/a","target":"parity-echo-a"},
+    {"id":"parameter-over-wildcard","method":"POST","path":"/parity/b","target":"parity-echo-b"},
+    {"id":"wildcard-tail","method":"POST","path":"/parity/b/extra","target":"parity-echo-a"},
+    {"id":"deep-parameter-over-wildcard","method":"POST","path":"/parity/a/detail","target":"parity-echo-b"},
+    {"id":"method-specific-target","method":"GET","path":"/parity/a","target":"parity-echo-b"},
+    {"id":"head-no-get-fallback","method":"HEAD","path":"/parity/a","target":null},
+    {"id":"get-no-post-fallback","method":"GET","path":"/parity/b","target":null},
+    {"id":"outside-prefix","method":"POST","path":"/other","target":null},
+    {"id":"warm-literal-recovery","method":"POST","path":"/parity/a","target":"parity-echo-a"},
+    {"id":"warm-parameter-recovery","method":"POST","path":"/parity/b","target":"parity-echo-b"}
+  ],
+  "orders":["declared","reversed"],
+  "expectedRequests":40,
+  "expectedExecutions":28
+}

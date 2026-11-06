@@ -1,0 +1,18 @@
+{
+  "schema": "parity-dynamic-echo/v1",
+  "basis": "Original forwarding contracts and backend fixed echo allowlist. Backend parity.rs echo selected-map branch emits an empty object for a present null query map; received-event goldens retain null independently. Goldens are not derived from observed payloads. Initial mistaken response null golden and failed local-01 are preserved in evidence.",
+  "profiles": {
+    "java": {"httpMethod":"POST","path":"/parity/a","isBase64Encoded":false,"multiValueHeaders":{},"multiValueQueryStringParameters":{},"backendIdentity":"echo-a","backendVersion":"1"},
+    "rust": {"httpMethod":"POST","path":"/parity/a","resource":"/parity/a","pathParameters":null,"isBase64Encoded":false,"body":null,"headers":{},"multiValueHeaders":{},"queryStringParameters":{},"multiValueQueryStringParameters":{},"backendIdentity":"echo-a","backendVersion":"1"}
+  },
+  "steps": [
+    {"id":"absent-a","request":{"mode":"echo"},"expected":{}},
+    {"id":"empty-a","request":{"mode":"echo","body":""},"expected":{"java":{"body":""},"rust":{"body":""}}},
+    {"id":"forward-unicode","request":{"mode":"echo","body":"雪 café","headers":{"x-synthetic":["first","second"]},"query":{"q":["a+b","%2B","雪",""],"empty":[""]}},"expected":{"java":{"body":"雪 café","multiValueQueryStringParameters":{"q":["a+b","%2B","雪",""],"empty":[""]}},"rust":{"body":"雪 café","queryStringParameters":{"q":"","empty":""},"multiValueQueryStringParameters":{"q":["a+b","+","雪",""],"empty":[""]}}},"syntheticHeader":true},
+    {"id":"echo-b","request":{"mode":"echo","path":"/parity/b","body":"{\"n\":9007199254740993}"},"expected":{"java":{"path":"/parity/b","backendIdentity":"echo-b","body":"{\"n\":9007199254740993}"},"rust":{"path":"/parity/b","resource":"/parity/b","backendIdentity":"echo-b","body":"{\"n\":9007199254740993}"}}},
+    {"id":"clean-a","request":{"mode":"echo"},"expected":{}},
+    {"id":"bounded-rejection","request":{"mode":"echo"},"oversizeBody":4097,"expectedStatus":400,"expectedBody":"{\"code\":\"PARITY_INVALID_CONTROL\"}"},
+    {"id":"warm-recovery","request":{"mode":"echo"},"expected":{}}
+  ],
+  "privacyExcluded":["synthetic-auth-canary","synthetic-cookie-canary","synthetic-private-canary"]
+}

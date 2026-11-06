@@ -1,0 +1,106 @@
+{
+  "schema": "lambda-parity-errors/v1",
+  "id": "proxy-errors-running-backend-v1",
+  "sourceContracts": [
+    "approved proxy mitigation f9f14577063c94b5784daee4d7252897fc6baf1d71148bf48aed0e872a4a37fa",
+    "native LambdaProxyMiddleware.execute and ChainExecutor exception policy",
+    "serverless-aws v1.parse_response and limits.status",
+    "existing E-03 opaque response/body policy",
+    "backend parity.rs invalid-base64 mode has an explicitly empty headers map; no media type may be invented"
+  ],
+  "sequence": [
+    "created",
+    "function-error",
+    "created",
+    "missing-status",
+    "created",
+    "wrong-type",
+    "created",
+    "invalid-base64",
+    "created",
+    "application-error",
+    "created"
+  ],
+  "expectations": {
+    "java": {
+      "created": {
+        "status": 201,
+        "body": "{\"result\":\"created\"}",
+        "base64": false
+      },
+      "function-error": {
+        "status": 500,
+        "code": "ERR14004",
+        "base64": false
+      },
+      "missing-status": {
+        "status": 500,
+        "code": "ERR14004",
+        "base64": false
+      },
+      "wrong-type": {
+        "status": 500,
+        "code": "ERR14004",
+        "base64": false
+      },
+      "invalid-base64": {
+        "status": 200,
+        "body": "%%%",
+        "base64": true,
+        "headers": {}
+      },
+      "application-error": {
+        "status": 500,
+        "body": "{\"code\":\"PARITY_APPLICATION_ERROR\"}",
+        "base64": false
+      }
+    },
+    "rust": {
+      "created": {
+        "status": 201,
+        "body": "{\"result\":\"created\"}",
+        "base64": false
+      },
+      "function-error": {
+        "status": 502,
+        "code": "ERR14014",
+        "base64": false
+      },
+      "missing-status": {
+        "status": 502,
+        "code": "ERR14015",
+        "base64": false
+      },
+      "wrong-type": {
+        "status": 502,
+        "code": "ERR14015",
+        "base64": false
+      },
+      "invalid-base64": {
+        "status": 502,
+        "code": "ERR14015",
+        "base64": false
+      },
+      "application-error": {
+        "status": 500,
+        "body": "{\"code\":\"PARITY_APPLICATION_ERROR\"}",
+        "base64": false
+      }
+    }
+  },
+  "perSide": {
+    "requests": 11,
+    "InvokeCalls": 11,
+    "backendEntries": 11,
+    "normalCompletions": 10
+  },
+  "privacyExcluded": [
+    "synthetic parity function error",
+    "private-canary",
+    "stackTrace",
+    "two hundred",
+    "SyntheticFailure"
+  ],
+  "originalAssertionsPreserved": true,
+  "AWSQualification": false
+}
